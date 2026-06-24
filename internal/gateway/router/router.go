@@ -62,68 +62,7 @@ func (r *Router) onTaskEvent(taskID string, event protocol.Message) {
 }
 
 func (r *Router) Handle(ctx context.Context, m msg.Message, adapter msg.Adapter) {
-	connection, err := r.Store.FindConnection(m.Platform, m.ChatID)
-	if err != nil || connection == nil {
-		adapter.Send(m.ChatID, "No agent connected to this chat. Set up a connection in the web dashboard.")
-		return
-	}
-
-	agent, err := r.Store.GetAgent(connection.AgentID)
-	if err != nil || agent == nil || !agent.Enabled {
-		adapter.Send(m.ChatID, "Agent not found or disabled.")
-		return
-	}
-
-	daemon, err := r.Store.GetDaemon(agent.DaemonID)
-	if err != nil || daemon == nil || daemon.Status != "online" {
-		adapter.Send(m.ChatID, "Agent daemon is offline.")
-		return
-	}
-
-	session, err := r.Store.GetOrCreateSession(connection.ID, m.UserName)
-	if err != nil {
-		slog.Warn("router: get/create session failed", "err", err)
-		adapter.Send(m.ChatID, "Internal error.")
-		return
-	}
-
-	_, err = r.Store.CreateMessage(session.ID, "user", m.Text, agent.ID)
-	if err != nil {
-		slog.Warn("router: create message failed", "err", err)
-	}
-
-	taskID := uuid.NewString()
-	taskMsg := protocol.Message{
-		Type:    protocol.TypeTask,
-		TaskID:  taskID,
-		Harness: agent.Harness,
-		Prompt:  m.Text,
-		Model:   agent.Model,
-	}
-	if agent.ExtraArgs != "" {
-		taskMsg.ExtraArgs = strings.Fields(agent.ExtraArgs)
-	}
-
-	// Register pending task for response routing
-	r.mu.Lock()
-	r.pending[taskID] = &pendingTask{
-		adapter:   adapter,
-		chatID:    m.ChatID,
-		sessionID: session.ID,
-		agentID:   agent.ID,
-	}
-	r.mu.Unlock()
-
-	if err := r.Hub.SendTask(agent.DaemonID, taskMsg); err != nil {
-		r.mu.Lock()
-		delete(r.pending, taskID)
-		r.mu.Unlock()
-		slog.Warn("router: dispatch failed", "daemon", agent.DaemonID, "err", err)
-		adapter.Send(m.ChatID, "Failed to dispatch task: "+err.Error())
-		return
-	}
-
-	slog.Info("router: task dispatched", "task_id", taskID, "agent", agent.ID, "daemon", agent.DaemonID, "chat", m.ChatID)
+	adapter.Send(m.ChatID, "Direct routing not configured. Use an agent via web dashboard.")
 }
 
 func (r *Router) HandleWithAgent(ctx context.Context, m msg.Message, adapter msg.Adapter, agent *store.Agent) {
@@ -138,18 +77,7 @@ func (r *Router) HandleWithAgent(ctx context.Context, m msg.Message, adapter msg
 		return
 	}
 
-	// Look up or create connection for this chat
-	connection, err := r.Store.FindConnection(m.Platform, m.ChatID)
-	if err != nil || connection == nil {
-		connection, err = r.Store.CreateConnection(agent.ID, m.Platform, m.ChatID)
-		if err != nil {
-			slog.Warn("router: create connection failed", "err", err)
-			adapter.Send(m.ChatID, "Failed to set up connection.")
-			return
-		}
-	}
-
-	session, err := r.Store.GetOrCreateSession(connection.ID, m.UserName)
+	session, err := r.Store.GetOrCreateSessionByAgent(agent.ID, m.ChatID, m.UserName)
 	if err != nil {
 		slog.Warn("router: get/create session failed", "err", err)
 		adapter.Send(m.ChatID, "Internal error.")

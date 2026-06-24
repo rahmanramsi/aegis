@@ -29,13 +29,6 @@ export interface Agent {
 	updated_at: string;
 }
 
-export interface Connection {
-	id: string;
-	agent_id: string;
-	platform: string;
-	chat_id: string;
-	created_at: string;
-}
 
 export interface HealthStatus {
 	status: string;

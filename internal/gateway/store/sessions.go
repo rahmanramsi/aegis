@@ -7,20 +7,21 @@ import (
 )
 
 type Session struct {
-	ID           string `json:"id"`
-	ConnectionID string `json:"connection_id"`
-	UserName     string `json:"user_name"`
-	CreatedAt    string `json:"created_at"`
-	UpdatedAt    string `json:"updated_at"`
+	ID        string `json:"id"`
+	AgentID   string `json:"agent_id"`
+	ChatID    string `json:"chat_id"`
+	UserName  string `json:"user_name"`
+	CreatedAt string `json:"created_at"`
+	UpdatedAt string `json:"updated_at"`
 }
 
-func (s *Store) GetOrCreateSession(connectionID, userName string) (*Session, error) {
-	// Try to find the most recent session for this connection
+func (s *Store) GetOrCreateSessionByAgent(agentID, chatID, userName string) (*Session, error) {
+	// Try to find the most recent session for this agent+chat
 	var sess Session
 	err := s.DB.QueryRow(
-		"SELECT id, connection_id, user_name, created_at, updated_at FROM sessions WHERE connection_id = ? ORDER BY updated_at DESC LIMIT 1",
-		connectionID,
-	).Scan(&sess.ID, &sess.ConnectionID, &sess.UserName, &sess.CreatedAt, &sess.UpdatedAt)
+		"SELECT id, agent_id, chat_id, user_name, created_at, updated_at FROM sessions WHERE agent_id = ? AND chat_id = ? ORDER BY updated_at DESC LIMIT 1",
+		agentID, chatID,
+	).Scan(&sess.ID, &sess.AgentID, &sess.ChatID, &sess.UserName, &sess.CreatedAt, &sess.UpdatedAt)
 	if err == nil {
 		// Update username if changed
 		if userName != "" && sess.UserName != userName {
@@ -41,15 +42,16 @@ func (s *Store) GetOrCreateSession(connectionID, userName string) (*Session, err
 	// Create new session
 	now := time.Now().UTC().Format(time.RFC3339)
 	sess = Session{
-		ID:           uuid.NewString(),
-		ConnectionID: connectionID,
-		UserName:     userName,
-		CreatedAt:    now,
-		UpdatedAt:    now,
+		ID:        uuid.NewString(),
+		AgentID:   agentID,
+		ChatID:    chatID,
+		UserName:  userName,
+		CreatedAt: now,
+		UpdatedAt: now,
 	}
 	_, err = s.DB.Exec(
-		"INSERT INTO sessions (id, connection_id, user_name, created_at, updated_at) VALUES (?, ?, ?, ?, ?)",
-		sess.ID, sess.ConnectionID, sess.UserName, sess.CreatedAt, sess.UpdatedAt,
+		"INSERT INTO sessions (id, agent_id, chat_id, user_name, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?)",
+		sess.ID, sess.AgentID, sess.ChatID, sess.UserName, sess.CreatedAt, sess.UpdatedAt,
 	)
 	if err != nil {
 		return nil, err
@@ -57,10 +59,10 @@ func (s *Store) GetOrCreateSession(connectionID, userName string) (*Session, err
 	return &sess, nil
 }
 
-func (s *Store) ListSessions(connectionID string) ([]Session, error) {
+func (s *Store) ListSessions(agentID, chatID string) ([]Session, error) {
 	rows, err := s.DB.Query(
-		"SELECT id, connection_id, user_name, created_at, updated_at FROM sessions WHERE connection_id = ? ORDER BY updated_at DESC",
-		connectionID,
+		"SELECT id, agent_id, chat_id, user_name, created_at, updated_at FROM sessions WHERE agent_id = ? AND chat_id = ? ORDER BY updated_at DESC",
+		agentID, chatID,
 	)
 	if err != nil {
 		return nil, err
@@ -70,7 +72,7 @@ func (s *Store) ListSessions(connectionID string) ([]Session, error) {
 	sessions := make([]Session, 0)
 	for rows.Next() {
 		var sess Session
-		if err := rows.Scan(&sess.ID, &sess.ConnectionID, &sess.UserName, &sess.CreatedAt, &sess.UpdatedAt); err != nil {
+		if err := rows.Scan(&sess.ID, &sess.AgentID, &sess.ChatID, &sess.UserName, &sess.CreatedAt, &sess.UpdatedAt); err != nil {
 			return nil, err
 		}
 		sessions = append(sessions, sess)

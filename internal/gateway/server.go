@@ -80,13 +80,8 @@ func (s *Server) registerRoutes() {
 			r.Put("/agents/{id}", ah.Update)
 			r.Delete("/agents/{id}", ah.Delete)
 
-			ch := &api.ConnectionHandler{Store: s.Store}
-			r.Get("/agents/{aid}/connections", ch.List)
-			r.Post("/agents/{aid}/connections", ch.Create)
-			r.Delete("/connections/{id}", ch.Delete)
-
 			sh := &api.SessionHandler{Store: s.Store}
-			r.Get("/connections/{cid}/sessions", sh.List)
+			r.Get("/agents/{aid}/chats/{cid}/sessions", sh.List)
 			r.Get("/sessions/{id}/messages", sh.ListMessages)
 		})
 	})

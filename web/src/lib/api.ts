@@ -1,4 +1,4 @@
-import type { Workspace, Daemon, DaemonCreateResponse, Agent, AgentCreateResponse, Connection, HealthStatus } from '$lib/types';
+import type { Workspace, Daemon, DaemonCreateResponse, Agent, AgentCreateResponse, HealthStatus } from '$lib/types';
 
 const BASE = '/api/v1';
 const TOKEN_KEY = 'aegis_api_key';
@@ -87,12 +87,6 @@ export const api = {
 		update: (id: string, data: { name?: string; harness?: string; model?: string; enabled?: boolean }): Promise<Agent> =>
 			request(`/agents/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
 		delete: (id: string): Promise<void> => request(`/agents/${id}`, { method: 'DELETE' }),
-	},
-	connections: {
-		list: (aid: string): Promise<Connection[]> => request(`/agents/${aid}/connections`),
-		create: (aid: string, data: { platform: string; chat_id: string }): Promise<Connection> =>
-			request(`/agents/${aid}/connections`, { method: 'POST', body: JSON.stringify(data) }),
-		delete: (id: string): Promise<void> => request(`/connections/${id}`, { method: 'DELETE' }),
 	},
 	health: (): Promise<HealthStatus> => request('/health'),
 };

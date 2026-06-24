@@ -4,9 +4,9 @@ import (
 	"encoding/json"
 	"log/slog"
 	"net/http"
+	"strconv"
 
 	"github.com/go-chi/chi/v5"
-	"strconv"
 
 	"github.com/rahmanramsi/aegis/internal/gateway/store"
 )
@@ -17,8 +17,9 @@ type SessionHandler struct {
 
 func (h *SessionHandler) List(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
+	aid := chi.URLParam(r, "aid")
 	cid := chi.URLParam(r, "cid")
-	sessions, err := h.Store.ListSessions(cid)
+	sessions, err := h.Store.ListSessions(aid, cid)
 	if err != nil {
 		slog.Error("list sessions", "err", err)
 		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "internal error"})
