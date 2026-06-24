@@ -3,6 +3,7 @@ package harness
 import (
 	"context"
 	"os/exec"
+	"sync"
 )
 
 type GeminiRunner struct {
@@ -47,13 +48,16 @@ func (r *GeminiRunner) Run(ctx context.Context, req RunRequest) (<-chan StreamEv
 	}
 
 	go func() {
-		defer close(ch)
-		go scanStream(stdout, EventStdout, ch)
-		scanStream(stderr, EventStderr, ch)
+		var wg sync.WaitGroup
+		wg.Add(2)
+		go func() { defer wg.Done(); scanStream(stdout, EventStdout, ch) }()
+		go func() { defer wg.Done(); scanStream(stderr, EventStderr, ch) }()
+		wg.Wait()
 		if err := cmd.Wait(); err != nil {
 			ch <- StreamEvent{Type: EventError, Content: "gemini: " + err.Error()}
 		}
 		ch <- StreamEvent{Type: EventDone}
+		close(ch)
 	}()
 
 	return ch, nil

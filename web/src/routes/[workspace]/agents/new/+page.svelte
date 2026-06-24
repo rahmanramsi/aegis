@@ -16,6 +16,7 @@
 	let name = $state('');
 	let daemonId = $state('');
 	let harness = $state('');
+	let personality = $state('');
 	let model = $state('');
 	let telegramToken = $state('');
 	let submitting = $state(false);
@@ -38,14 +39,7 @@
 		if (!name || !daemonId || !harness) return;
 		submitting = true;
 		try {
-			const wid = $page.params.workspace!;
-			const res = await api.agents.create(wid, {
-				name,
-				daemon_id: daemonId,
-				harness,
-				model: model || undefined,
-				telegram_token: telegramToken || undefined,
-			});
+			const res = await api.agents.create(wid, { name, daemon_id: daemonId, harness, model: model || undefined, personality: personality || undefined, telegram_token: telegramToken || undefined });
 			createdAgent = res.agent;
 			createdToken = res.telegram_token;
 			toast.success('Agent created');
@@ -144,6 +138,16 @@
 				<div class="space-y-2">
 					<Label for="model">Model (optional)</Label>
 					<Input id="model" placeholder="e.g. claude-sonnet-4-20250514" bind:value={model} />
+				</div>
+
+				<div class="space-y-2">
+					<Label for="personality">Personality (optional)</Label>
+					<textarea id="personality" rows={4}
+						class="w-full bg-zinc-900 border border-zinc-700 rounded-md px-3 py-2 text-sm text-zinc-200 placeholder:text-zinc-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/50"
+						placeholder="You are a helpful support engineer. Always respond in a friendly tone. Keep answers concise."
+						bind:value={personality}
+					></textarea>
+					<p class="text-xs text-zinc-500">System prompt that defines how the agent behaves.</p>
 				</div>
 
 				<div class="space-y-2">

@@ -38,7 +38,12 @@ func (h *DaemonHandler) List(w http.ResponseWriter, r *http.Request) {
 		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "internal error"})
 		return
 	}
-	json.NewEncoder(w).Encode(daemons)
+	out := make([]daemonWithHarnesses, len(daemons))
+	for i, d := range daemons {
+		harns, _ := h.Store.GetDaemonHarnesses(d.ID)
+		out[i] = daemonWithHarnesses{Daemon: d, Harnesses: harns}
+	}
+	json.NewEncoder(w).Encode(out)
 }
 
 func (h *DaemonHandler) Create(w http.ResponseWriter, r *http.Request) {

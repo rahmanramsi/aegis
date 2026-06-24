@@ -1,9 +1,10 @@
 <script lang="ts">
 	import Card from '$lib/components/ui/card/card.svelte';
 	import Badge from '$lib/components/ui/badge/badge.svelte';
-	import Button from '$lib/components/ui/button/button.svelte';
-	import Skeleton from '$lib/components/ui/skeleton/skeleton.svelte';
-	import Separator from '$lib/components/ui/separator/separator.svelte';
+import Button from '$lib/components/ui/button/button.svelte';
+import Input from '$lib/components/ui/input/input.svelte';
+import Label from '$lib/components/ui/label/label.svelte';
+import Skeleton from '$lib/components/ui/skeleton/skeleton.svelte';
 	import * as Dialog from '$lib/components/ui/dialog';
 	import { api } from '$lib/api';
 	import type { Workspace, HealthStatus } from '$lib/types';

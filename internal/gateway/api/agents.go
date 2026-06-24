@@ -24,15 +24,17 @@ type createAgentInput struct {
 	Model         string `json:"model"`
 	ExtraArgs     string `json:"extra_args"`
 	Enabled       *bool  `json:"enabled"`
+	Personality   string `json:"personality"`
 	TelegramToken string `json:"telegram_token"`
 }
 
 type updateAgentInput struct {
-	Name      string `json:"name"`
-	Harness   string `json:"harness"`
-	Model     string `json:"model"`
-	ExtraArgs string `json:"extra_args"`
-	Enabled   *bool  `json:"enabled"`
+	Name        string `json:"name"`
+	Harness     string `json:"harness"`
+	Model       string `json:"model"`
+	ExtraArgs   string `json:"extra_args"`
+	Enabled     *bool  `json:"enabled"`
+	Personality string `json:"personality"`
 }
 
 func (h *AgentHandler) List(w http.ResponseWriter, r *http.Request) {
@@ -96,7 +98,7 @@ func (h *AgentHandler) Create(w http.ResponseWriter, r *http.Request) {
 		tokenHash = sha256Hex(in.TelegramToken)
 	}
 
-	agent, err := h.Store.CreateAgent(wid, in.DaemonID, in.Name, in.Harness, in.Model, in.ExtraArgs, tokenHash, enabled)
+	agent, err := h.Store.CreateAgent(wid, in.DaemonID, in.Name, in.Harness, in.Model, in.ExtraArgs, in.Personality, tokenHash, enabled)
 	if err != nil {
 		slog.Error("create agent", "err", err)
 		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "internal error"})
@@ -150,6 +152,7 @@ func (h *AgentHandler) Update(w http.ResponseWriter, r *http.Request) {
 	harness := existing.Harness
 	model := existing.Model
 	extraArgs := existing.ExtraArgs
+	personality := existing.Personality
 	enabled := existing.Enabled
 
 	if in.Name != "" {
@@ -164,11 +167,14 @@ func (h *AgentHandler) Update(w http.ResponseWriter, r *http.Request) {
 	if in.ExtraArgs != "" {
 		extraArgs = in.ExtraArgs
 	}
+	if in.Personality != "" {
+		personality = in.Personality
+	}
 	if in.Enabled != nil {
 		enabled = *in.Enabled
 	}
 
-	agent, err := h.Store.UpdateAgent(id, name, harness, model, extraArgs, enabled)
+	agent, err := h.Store.UpdateAgent(id, name, harness, model, extraArgs, personality, enabled)
 	if err != nil {
 		slog.Error("update agent", "err", err)
 		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "internal error"})
