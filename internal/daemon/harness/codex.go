@@ -15,7 +15,16 @@ func NewCodexRunner(path, model string) *CodexRunner { return &CodexRunner{path:
 
 func (r *CodexRunner) Name() string    { return "codex" }
 func (r *CodexRunner) Available() bool { _, err := exec.LookPath("codex"); return err == nil }
-func (r *CodexRunner) Models(_ context.Context) ([]string, error) {
+func (r *CodexRunner) Models(ctx context.Context) ([]string, error) {
+	path := r.path
+	if path == "" {
+		path = "codex"
+	}
+	cmd := exec.CommandContext(ctx, path, "models")
+	out, err := cmd.Output()
+	if err == nil && len(out) > 0 {
+		return parseModels(out), nil
+	}
 	return []string{"gpt-5.1-codex", "gpt-5.1", "gpt-5", "gpt-4.1", "o3", "o4-mini"}, nil
 }
 

@@ -15,8 +15,17 @@ func NewPiRunner(path, model string) *PiRunner { return &PiRunner{path: path, mo
 
 func (r *PiRunner) Name() string    { return "pi" }
 func (r *PiRunner) Available() bool { _, err := exec.LookPath("pi"); return err == nil }
-func (r *PiRunner) Models(_ context.Context) ([]string, error) {
-	return []string{"pi-stable", "pi-fast"}, nil
+func (r *PiRunner) Models(ctx context.Context) ([]string, error) {
+	path := r.path
+	if path == "" {
+		path = "pi"
+	}
+	cmd := exec.CommandContext(ctx, path, "models")
+	out, err := cmd.Output()
+	if err == nil && len(out) > 0 {
+		return parseModels(out), nil
+	}
+	return nil, nil // pi doesn't support model listing
 }
 
 func (r *PiRunner) Run(ctx context.Context, req RunRequest) (<-chan StreamEvent, error) {

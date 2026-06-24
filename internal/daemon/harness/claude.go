@@ -15,7 +15,17 @@ func NewClaudeRunner(path, model string) *ClaudeRunner { return &ClaudeRunner{pa
 
 func (r *ClaudeRunner) Name() string    { return "claude" }
 func (r *ClaudeRunner) Available() bool { _, err := exec.LookPath("claude"); return err == nil }
-func (r *ClaudeRunner) Models(_ context.Context) ([]string, error) {
+func (r *ClaudeRunner) Models(ctx context.Context) ([]string, error) {
+	path := r.path
+	if path == "" {
+		path = "claude"
+	}
+	cmd := exec.CommandContext(ctx, path, "models")
+	out, err := cmd.Output()
+	if err == nil && len(out) > 0 {
+		return parseModels(out), nil
+	}
+	// CLI doesn't support model listing — return known Anthropic models
 	return []string{"claude-sonnet-4-20250514", "claude-opus-4-20250514", "claude-haiku-3-5-20241022"}, nil
 }
 
