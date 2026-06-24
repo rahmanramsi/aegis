@@ -1,6 +1,6 @@
 import type { Workspace, Daemon, DaemonCreateResponse, Agent, AgentCreateResponse, Connection, HealthStatus } from '$lib/types';
 
-const BASE = (typeof window !== 'undefined' ? localStorage.getItem('aegis_api_base') : null) || '/api/v1';
+const BASE = '/api/v1';
 const TOKEN_KEY = 'aegis_api_key';
 
 let _token = '';
@@ -8,16 +8,18 @@ let _onUnauthorized: (() => void) | null = null;
 
 export function setToken(token: string) {
 	_token = token;
-	if (token) {
-		localStorage.setItem(TOKEN_KEY, token);
-	} else {
-		localStorage.removeItem(TOKEN_KEY);
-	}
+	try {
+		if (token) localStorage.setItem(TOKEN_KEY, token);
+		else localStorage.removeItem(TOKEN_KEY);
+	} catch {}
 }
 
 export function getToken(): string {
-	if (!_token) {
+	if (_token) return _token;
+	try {
 		_token = localStorage.getItem(TOKEN_KEY) || '';
+	} catch {
+		_token = '';
 	}
 	return _token;
 }
