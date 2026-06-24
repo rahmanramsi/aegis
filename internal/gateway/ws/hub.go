@@ -34,6 +34,11 @@ func NewHub(s *store.Store) *Hub {
 }
 
 func (h *Hub) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	defer func() {
+		if rec := recover(); rec != nil {
+			slog.Error("ws handler panic", "panic", rec)
+		}
+	}()
 	conn, err := websocket.Accept(w, r, &websocket.AcceptOptions{
 		OriginPatterns: []string{"*"},
 	})
@@ -42,7 +47,6 @@ func (h *Hub) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Read handshake
 	ctx, cancel := context.WithTimeout(r.Context(), 10*time.Second)
 	defer cancel()
 
@@ -58,7 +62,6 @@ func (h *Hub) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Verify token
 	tokenHash := sha256Hex(msg.Token)
 	if err := h.Store.AuthenticateDaemon(msg.DaemonID, tokenHash, msg.Harnesses); err != nil {
 		slog.Error("auth daemon", "err", err, "daemon_id", msg.DaemonID)
@@ -67,7 +70,6 @@ func (h *Hub) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Accept
 	wsjson.Write(ctx, conn, protocol.Message{Type: protocol.TypeHandshakeOK})
 
 	dc := &DaemonConn{
