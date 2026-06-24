@@ -2,6 +2,8 @@ package main
 
 import (
 	"context"
+	"crypto/rand"
+	"fmt"
 	"log/slog"
 	"os"
 	"os/exec"
@@ -43,33 +45,24 @@ func main() {
 
 	ctx, cancel := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer cancel()
-
-	// Auto-enroll with workspace key
-	if cfg.WorkspaceKey != "" {
-		client := daemon.NewClient(cfg, reg)
-		state, err := client.Enroll(ctx)
-		if err != nil {
-			slog.Error("enroll failed", "err", err)
-			os.Exit(1)
-		}
-		if err := daemon.SaveState(state); err != nil {
-			slog.Error("save state", "err", err)
-		}
-		cfg.DaemonID = state.DaemonID
-		cfg.DaemonToken = state.Token
-		slog.Info("daemon enrolled", "id", state.DaemonID)
+	// Use API key as daemon token
+	if cfg.DaemonToken == "" {
+		cfg.DaemonToken = cfg.APIKey
+	}
+	if cfg.DaemonToken == "" {
+		slog.Error("no API key — set AEGIS_API_KEY")
+		os.Exit(1)
 	}
 
-	// Load saved state if no env override
+	// Generate daemon ID if not set
 	if cfg.DaemonID == "" {
-		if state, err := daemon.LoadState(); err == nil {
-			cfg.DaemonID = state.DaemonID
-			cfg.DaemonToken = state.Token
-			slog.Info("loaded saved state", "id", state.DaemonID)
-		} else {
-			slog.Error("no daemon ID — set AEGIS_WORKSPACE_KEY to enroll, or AEGIS_DAEMON_ID/AEGIS_DAEMON_TOKEN to reconnect")
+		id, err := newUUID()
+		if err != nil {
+			slog.Error("generate uuid", "err", err)
 			os.Exit(1)
 		}
+		cfg.DaemonID = id
+		slog.Info("generated daemon id", "id", id)
 	}
 
 	client := daemon.NewClient(cfg, reg)
@@ -90,4 +83,12 @@ func getPath(name string) string {
 
 func getModel(name string) string {
 	return os.Getenv("AEGIS_" + name + "_MODEL")
+}
+
+func newUUID() (string, error) {
+	var b [16]byte
+	if _, err := rand.Read(b[:]); err != nil {
+		return "", err
+	}
+	return fmt.Sprintf("%x-%x-%x-%x-%x", b[0:4], b[4:6], b[6:8], b[8:10], b[10:]), nil
 }

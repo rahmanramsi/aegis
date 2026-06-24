@@ -7,8 +7,7 @@ type MessageType string
 const (
 	TypeHandshake   MessageType = "handshake"
 	TypeHandshakeOK MessageType = "handshake_ok"
-	TypeEnroll      MessageType = "enroll"
-	TypeEnrolled    MessageType = "enrolled"
+	TypeStreamEvent MessageType = "stream_event"
 	TypeStdout      MessageType = "stdout"
 	TypeStderr      MessageType = "stderr"
 	TypeDone        MessageType = "done"
@@ -22,17 +21,10 @@ type Message struct {
 	Content string      `json:"content,omitempty"`
 
 	// Handshake (daemon → gateway)
-	DaemonID  string   `json:"daemon_id,omitempty"`
-	Token     string   `json:"token,omitempty"`
-	Harnesses []string `json:"harnesses,omitempty"`
-
-	// Enroll (daemon → gateway)
-	WorkspaceKey string `json:"workspace_key,omitempty"`
-	DaemonName   string `json:"daemon_name,omitempty"`
-
-	// Enrolled (gateway → daemon)
-	EnrolledID    string `json:"enrolled_id,omitempty"`
-	EnrolledToken string `json:"enrolled_token,omitempty"`
+	DaemonID   string   `json:"daemon_id,omitempty"`
+	Token      string   `json:"token,omitempty"`
+	DaemonName string   `json:"daemon_name,omitempty"`
+	Harnesses  []string `json:"harnesses,omitempty"`
 
 	// Task (gateway → daemon)
 	Harness   string   `json:"harness,omitempty"`

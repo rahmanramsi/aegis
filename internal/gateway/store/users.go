@@ -22,7 +22,6 @@ type User struct {
 	Email             string `json:"email"`
 	PasswordHash      string `json:"-"`
 	APIKeyHash        string `json:"-"`
-	EnrollmentKeyHash string `json:"-"`
 	CreatedAt         string `json:"created_at"`
 }
 
@@ -120,17 +119,6 @@ func (s *Store) GetUserByAPIKey(apiKeyHash string) (*User, error) {
 	return &u, nil
 }
 
-func (s *Store) GetUserByEnrollmentKey(keyHash string) (*User, error) {
-	var u User
-	err := s.DB.QueryRow(
-		"SELECT id, email, password_hash, api_key_hash, enrollment_key_hash, created_at FROM users WHERE enrollment_key_hash = ?",
-		keyHash,
-	).Scan(&u.ID, &u.Email, &u.PasswordHash, &u.APIKeyHash, &u.EnrollmentKeyHash, &u.CreatedAt)
-	if err != nil {
-		return nil, ErrInvalidAPIKey
-	}
-	return &u, nil
-}
 
 func (s *Store) RotateAPIKey(userID string) (string, error) {
 	apiKey, apiKeyHash := generateAPIKey()
@@ -138,11 +126,6 @@ func (s *Store) RotateAPIKey(userID string) (string, error) {
 	return apiKey, err
 }
 
-func (s *Store) GenerateEnrollmentKey(userID string) (string, error) {
-	enrollmentKey, keyHash := generateAPIKey()
-	_, err := s.DB.Exec("UPDATE users SET enrollment_key_hash = ? WHERE id = ?", keyHash, userID)
-	return enrollmentKey, err
-}
 
 func (s *Store) AddMember(workspaceID, userID, role string) error {
 	_, err := s.DB.Exec(

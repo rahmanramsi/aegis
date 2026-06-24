@@ -114,18 +114,3 @@ func (h *AuthHandler) Me(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(user)
 }
 
-func (h *AuthHandler) GenerateEnrollmentKey(w http.ResponseWriter, r *http.Request) {
-	w.Header().Set("Content-Type", "application/json")
-	user := UserFromContext(r)
-	if user == nil {
-		writeJSON(w, http.StatusUnauthorized, map[string]string{"error": "unauthorized"})
-		return
-	}
-	key, err := h.Store.GenerateEnrollmentKey(user.ID)
-	if err != nil {
-		slog.Error("generate enrollment key", "err", err)
-		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "internal error"})
-		return
-	}
-	json.NewEncoder(w).Encode(map[string]string{"enrollment_key": key})
-}

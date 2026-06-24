@@ -78,8 +78,6 @@ export const api = {
 			request('/daemons', { method: 'POST', body: JSON.stringify(data) }),
 		get: (id: string): Promise<Daemon> => request(`/daemons/${id}`),
 		delete: (id: string): Promise<void> => request(`/daemons/${id}`, { method: 'DELETE' }),
-		enrollmentKey: (): Promise<{ key: string }> =>
-			request('/me/enrollment-key', { method: 'POST' }),
 	},
 	agents: {
 		list: (wid: string): Promise<Agent[]> => request(`/workspaces/${wid}/agents`),

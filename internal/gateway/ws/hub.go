@@ -2,7 +2,6 @@ package ws
 
 import (
 	"context"
-	"crypto/rand"
 	"crypto/sha256"
 	"encoding/hex"
 	"fmt"
@@ -13,6 +12,7 @@ import (
 
 	"github.com/coder/websocket"
 	"github.com/coder/websocket/wsjson"
+	"github.com/google/uuid"
 
 	"github.com/rahmanramsi/aegis/internal/gateway/store"
 	"github.com/rahmanramsi/aegis/internal/protocol"
@@ -57,51 +57,47 @@ func (h *Hub) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		conn.Close(websocket.StatusPolicyViolation, "expected handshake")
 		return
 	}
-	switch msg.Type {
-	case protocol.TypeHandshake:
-		tokenHash := sha256Hex(msg.Token)
-		if err := h.Store.AuthenticateDaemon(msg.DaemonID, tokenHash, msg.Harnesses); err != nil {
-			slog.Error("auth daemon", "err", err)
-			wsjson.Write(ctx, conn, protocol.Message{Type: protocol.TypeError, Content: err.Error()})
-			conn.Close(websocket.StatusPolicyViolation, "auth failed")
-			return
-		}
-	case protocol.TypeEnroll:
-		keyHash := sha256Hex(msg.WorkspaceKey)
-		user, err := h.Store.GetUserByEnrollmentKey(keyHash)
-		if err != nil {
-			slog.Error("enroll: invalid key", "err", err)
-			wsjson.Write(ctx, conn, protocol.Message{Type: protocol.TypeError, Content: "invalid enrollment key"})
-			conn.Close(websocket.StatusPolicyViolation, "invalid key")
-			return
-		}
-		name := msg.DaemonName
-		if name == "" {
-			name = "auto"
-		}
-		daemonToken := generateToken()
-		d, err := h.Store.CreateDaemon(user.ID, name, sha256Hex(daemonToken))
-		if err != nil {
-			slog.Error("enroll: create daemon", "err", err)
-			conn.Close(websocket.StatusInternalError, "failed to create daemon")
-			return
-		}
-		h.Store.AuthenticateDaemon(d.ID, sha256Hex(daemonToken), msg.Harnesses)
-		wsjson.Write(ctx, conn, protocol.Message{
-			Type:          protocol.TypeEnrolled,
-			EnrolledID:    d.ID,
-			EnrolledToken: daemonToken,
-		})
-		msg.DaemonID = d.ID
-		msg.Harnesses = msg.Harnesses
-	default:
-		conn.Close(websocket.StatusPolicyViolation, "expected handshake or enroll")
+
+	if msg.Type != protocol.TypeHandshake {
+		slog.Warn("expected handshake", "got", msg.Type)
+		wsjson.Write(ctx, conn, protocol.Message{Type: protocol.TypeError, Content: "expected handshake"})
+		conn.Close(websocket.StatusPolicyViolation, "expected handshake")
 		return
 	}
 
 	tokenHash := sha256Hex(msg.Token)
-	if err := h.Store.AuthenticateDaemon(msg.DaemonID, tokenHash, msg.Harnesses); err != nil {
-		slog.Error("auth daemon", "err", err, "daemon_id", msg.DaemonID)
+	user, err := h.Store.GetUserByAPIKey(tokenHash)
+	if err != nil {
+		slog.Warn("ws: invalid API key", "err", err)
+		wsjson.Write(ctx, conn, protocol.Message{Type: protocol.TypeError, Content: "invalid API key"})
+		conn.Close(websocket.StatusPolicyViolation, "invalid API key")
+		return
+	}
+
+	daemonID := msg.DaemonID
+	if daemonID == "" {
+		daemonID = uuid.NewString()
+	}
+
+	_, err = h.Store.GetDaemon(daemonID)
+	if err != nil {
+		name := msg.DaemonName
+		if name == "" {
+			name = "auto"
+		}
+		d, err := h.Store.CreateDaemon(user.ID, name, tokenHash)
+		if err != nil {
+			slog.Error("ws: create daemon", "err", err)
+			wsjson.Write(ctx, conn, protocol.Message{Type: protocol.TypeError, Content: "failed to create daemon"})
+			conn.Close(websocket.StatusInternalError, "create daemon failed")
+			return
+		}
+		daemonID = d.ID
+	}
+	msg.DaemonID = daemonID
+
+	if err := h.Store.AuthenticateDaemon(daemonID, tokenHash, msg.Harnesses); err != nil {
+		slog.Error("auth daemon", "err", err, "daemon_id", daemonID)
 		wsjson.Write(ctx, conn, protocol.Message{Type: protocol.TypeError, Content: err.Error()})
 		conn.Close(websocket.StatusPolicyViolation, "auth failed")
 		return
@@ -147,10 +143,4 @@ func (h *Hub) removeDaemon(id string) {
 func sha256Hex(s string) string {
 	h := sha256.Sum256([]byte(s))
 	return hex.EncodeToString(h[:])
-}
-
-func generateToken() string {
-	b := make([]byte, 32)
-	rand.Read(b)
-	return hex.EncodeToString(b)
 }

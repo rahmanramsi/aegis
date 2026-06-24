@@ -59,7 +59,6 @@ func (s *Server) registerRoutes() {
 			r.Use(authMiddleware(s.Store))
 
 			r.Get("/auth/me", authH.Me)
-			r.Post("/me/enrollment-key", authH.GenerateEnrollmentKey)
 
 			wh := &api.WorkspaceHandler{Store: s.Store}
 			r.Get("/workspaces", wh.List)

@@ -54,6 +54,7 @@ func (c *Client) Connect(ctx context.Context) error {
 		Type:      protocol.TypeHandshake,
 		DaemonID:  c.cfg.DaemonID,
 		Token:     c.cfg.DaemonToken,
+		DaemonName: c.cfg.DaemonName,
 		Harnesses: harnessNames,
 	}
 
@@ -65,56 +66,6 @@ func (c *Client) Connect(ctx context.Context) error {
 	return nil
 }
 
-func (c *Client) Enroll(ctx context.Context) (*DaemonState, error) {
-	slog.Info("enrolling to gateway", "url", c.cfg.GatewayURL)
-	conn, _, err := websocket.Dial(ctx, c.cfg.GatewayURL, nil)
-	if err != nil {
-		return nil, fmt.Errorf("dial gateway: %w", err)
-	}
-
-	harnessNames := make([]string, 0, len(c.runners))
-	for name := range c.runners {
-		harnessNames = append(harnessNames, name)
-	}
-
-	msg := protocol.Message{
-		Type:         protocol.TypeEnroll,
-		WorkspaceKey: c.cfg.WorkspaceKey,
-		DaemonName:   c.cfg.DaemonName,
-		Harnesses:    harnessNames,
-	}
-
-	if err := wsjson.Write(ctx, conn, msg); err != nil {
-		conn.Close(websocket.StatusNormalClosure, "")
-		return nil, fmt.Errorf("send enroll: %w", err)
-	}
-
-	var resp protocol.Message
-	if err := wsjson.Read(ctx, conn, &resp); err != nil {
-		conn.Close(websocket.StatusNormalClosure, "")
-		return nil, fmt.Errorf("read enrolled: %w", err)
-	}
-
-	if resp.Type == protocol.TypeError {
-		conn.Close(websocket.StatusNormalClosure, "")
-		return nil, fmt.Errorf("enroll failed: %s", resp.Content)
-	}
-
-	if resp.Type != protocol.TypeEnrolled {
-		conn.Close(websocket.StatusNormalClosure, "")
-		return nil, fmt.Errorf("unexpected response: %s", resp.Type)
-	}
-
-	conn.Close(websocket.StatusNormalClosure, "")
-
-	state := &DaemonState{
-		DaemonID: resp.EnrolledID,
-		Token:    resp.EnrolledToken,
-	}
-
-	slog.Info("enrolled", "daemon_id", state.DaemonID)
-	return state, nil
-}
 
 // Run connects to the gateway and runs the read loop with auto-reconnect
 // and exponential backoff. It blocks until ctx is cancelled.
