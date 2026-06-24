@@ -56,6 +56,15 @@ func (h *AuthHandler) Register(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.WriteHeader(http.StatusCreated)
+
+	// Auto-create default workspace
+	ws, err := h.Store.CreateWorkspace("Default", "default-"+user.ID[:8])
+	if err != nil {
+		slog.Warn("create default workspace", "err", err)
+	} else {
+		h.Store.AddMember(ws.ID, user.ID, "admin")
+	}
+
 	json.NewEncoder(w).Encode(map[string]interface{}{
 		"user":    user,
 		"api_key": apiKey,
