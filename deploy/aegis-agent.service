@@ -1,0 +1,17 @@
+[Unit]
+Description=Aegis Agent Daemon
+After=network.target
+
+[Service]
+Type=simple
+User=%i
+WorkingDirectory=%h/aegis
+EnvironmentFile=%h/.aegis/env
+ExecStart=%h/aegis/aegis-agent
+Restart=always
+RestartSec=5
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=multi-user.target

@@ -1,0 +1,166 @@
+package api
+
+import (
+	"encoding/json"
+	"log/slog"
+	"net/http"
+
+	"github.com/rahmanramsi/aegis/internal/gateway/store"
+)
+
+type AgentHandler struct {
+	Store *store.Store
+}
+
+type createAgentInput struct {
+	DaemonID  string `json:"daemon_id"`
+	Name      string `json:"name"`
+	Harness   string `json:"harness"`
+	Model     string `json:"model"`
+	ExtraArgs string `json:"extra_args"`
+	Enabled   *bool  `json:"enabled"`
+}
+
+type updateAgentInput struct {
+	Name      string `json:"name"`
+	Harness   string `json:"harness"`
+	Model     string `json:"model"`
+	ExtraArgs string `json:"extra_args"`
+	Enabled   *bool  `json:"enabled"`
+}
+
+func (h *AgentHandler) List(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+	wid := r.PathValue("wid")
+	agents, err := h.Store.ListAgents(wid)
+	if err != nil {
+		slog.Error("list agents", "err", err)
+		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "internal error"})
+		return
+	}
+	json.NewEncoder(w).Encode(agents)
+}
+
+func (h *AgentHandler) Create(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+	wid := r.PathValue("wid")
+
+	var in createAgentInput
+	if err := json.NewDecoder(r.Body).Decode(&in); err != nil {
+		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "invalid JSON body"})
+		return
+	}
+
+	// Validate: daemon must belong to the same workspace
+	daemon, err := h.Store.GetDaemon(in.DaemonID)
+	if err != nil {
+		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "daemon not found"})
+		return
+	}
+	if daemon.WorkspaceID != wid {
+		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "daemon does not belong to workspace"})
+		return
+	}
+
+	// Validate: harness must exist in daemon_harnesses
+	harnesses, err := h.Store.GetDaemonHarnesses(in.DaemonID)
+	if err != nil {
+		slog.Error("get daemon harnesses", "err", err)
+		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "internal error"})
+		return
+	}
+	found := false
+	for _, h := range harnesses {
+		if h == in.Harness {
+			found = true
+			break
+		}
+	}
+	if !found {
+		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "harness not available on daemon"})
+		return
+	}
+
+	enabled := true
+	if in.Enabled != nil {
+		enabled = *in.Enabled
+	}
+
+	agent, err := h.Store.CreateAgent(wid, in.DaemonID, in.Name, in.Harness, in.Model, in.ExtraArgs, enabled)
+	if err != nil {
+		slog.Error("create agent", "err", err)
+		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "internal error"})
+		return
+	}
+
+	w.WriteHeader(http.StatusCreated)
+	json.NewEncoder(w).Encode(agent)
+}
+
+func (h *AgentHandler) Get(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+	id := r.PathValue("id")
+	agent, err := h.Store.GetAgent(id)
+	if err != nil {
+		writeJSON(w, http.StatusNotFound, map[string]string{"error": "not found"})
+		return
+	}
+	json.NewEncoder(w).Encode(agent)
+}
+
+func (h *AgentHandler) Update(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+	id := r.PathValue("id")
+
+	var in updateAgentInput
+	if err := json.NewDecoder(r.Body).Decode(&in); err != nil {
+		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "invalid JSON body"})
+		return
+	}
+
+	// Get existing agent to preserve fields if not provided
+	existing, err := h.Store.GetAgent(id)
+	if err != nil {
+		writeJSON(w, http.StatusNotFound, map[string]string{"error": "not found"})
+		return
+	}
+
+	name := existing.Name
+	harness := existing.Harness
+	model := existing.Model
+	extraArgs := existing.ExtraArgs
+	enabled := existing.Enabled
+
+	if in.Name != "" {
+		name = in.Name
+	}
+	if in.Harness != "" {
+		harness = in.Harness
+	}
+	if in.Model != "" {
+		model = in.Model
+	}
+	if in.ExtraArgs != "" {
+		extraArgs = in.ExtraArgs
+	}
+	if in.Enabled != nil {
+		enabled = *in.Enabled
+	}
+
+	agent, err := h.Store.UpdateAgent(id, name, harness, model, extraArgs, enabled)
+	if err != nil {
+		slog.Error("update agent", "err", err)
+		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "internal error"})
+		return
+	}
+	json.NewEncoder(w).Encode(agent)
+}
+
+func (h *AgentHandler) Delete(w http.ResponseWriter, r *http.Request) {
+	id := r.PathValue("id")
+	if err := h.Store.DeleteAgent(id); err != nil {
+		writeJSON(w, http.StatusNotFound, map[string]string{"error": "not found"})
+		return
+	}
+	w.WriteHeader(http.StatusNoContent)
+}
