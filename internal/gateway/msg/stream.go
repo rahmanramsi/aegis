@@ -13,35 +13,26 @@ import (
 
 const (
 	flushInterval  = 300 * time.Millisecond
-	bufferMinChars = 8  // Hermes: don't flush until enough content
-	maxFloodErrors = 3  // Hermes: consecutive failures → fallback to edit path
-	cursorChar     = " ▌"
+	bufferMinChars = 8
+	maxFloodErrors = 3
+	cursorChar     = " ▍"
 )
 
-// Hermes pattern: class-level monotonic counter. Reusing the same draft_id
-// across consecutive calls triggers Telegram's native draft animation.
 var draftIDCounter atomic.Int64
 
 type telegramStream struct {
 	adapter *TelegramAdapter
 	chatID  int64
 
-	// buffered text (accumulated from Append calls)
-	text string
-	mu   sync.Mutex
-
-	// dirty flag — set by Append, cleared by flush
-	dirty bool
-
-	// lifecycle
+	text   string
+	mu     sync.Mutex
+	dirty  bool
 	stopCh chan struct{}
 
-	// draft streaming state
 	draftID       int64
 	draftsEnabled bool
 	floodErrors   int
 
-	// legacy edit fallback state (when drafts disabled)
 	msgID     int
 	sentFirst bool
 }
@@ -68,7 +59,7 @@ func (s *telegramStream) flushLoop() {
 		case <-ticker.C:
 			s.flush()
 		case <-s.stopCh:
-			s.flush() // final flush before exit
+			s.flush()
 			return
 		}
 	}
@@ -83,13 +74,13 @@ func (s *telegramStream) flush() {
 	}
 	s.dirty = false
 
-	// Hermes pattern: append blinking cursor during streaming, strip on final
-	displayText := s.text + cursorChar
+	// Hermes: apply MarkdownV2 + cursor
+	formatted := FormatTelegramMarkdown(s.text) + cursorChar
 
 	if s.draftsEnabled {
-		s.flushDraft(displayText)
+		s.flushDraft(formatted)
 	} else {
-		s.flushEdit(displayText)
+		s.flushEdit(formatted)
 	}
 }
 
@@ -101,12 +92,10 @@ func (s *telegramStream) flushDraft(text string) {
 	})
 	if err != nil {
 		s.floodErrors++
-		slog.Warn("stream: draft failed", "err", err, "flood", s.floodErrors)
 		if s.floodErrors >= maxFloodErrors {
 			s.draftsEnabled = false
-			slog.Warn("stream: drafts disabled — falling back to edit path")
-			// Send current text as initial edit-path message
-			s.sendInitialLocked(s.text + cursorChar)
+			slog.Warn("stream: drafts disabled, falling back to edit path")
+			s.sendInitialLocked(FormatTelegramMarkdown(s.text) + cursorChar)
 		}
 		return
 	}
@@ -134,7 +123,7 @@ func (s *telegramStream) sendInitialLocked(text string) {
 		Text:   text,
 	})
 	if err != nil {
-		slog.Warn("stream: initial send failed", "err", err)
+		slog.Warn("stream: send failed", "err", err)
 		return
 	}
 	s.msgID = msg.ID
@@ -149,11 +138,8 @@ func (s *telegramStream) Append(text string) error {
 	return nil
 }
 
-// Done sends the final persistent message and stops the flush loop.
-// If drafts were used, the draft auto-clears when sendMessage arrives.
 func (s *telegramStream) Done() error {
 	close(s.stopCh)
-	// Give the flush loop time to drain
 	time.Sleep(flushInterval + 200*time.Millisecond)
 
 	s.mu.Lock()
@@ -167,23 +153,23 @@ func (s *telegramStream) Done() error {
 		return nil
 	}
 
+	final := FormatTelegramMarkdown(s.text)
+
 	if s.draftsEnabled {
-		// Draft path: send final persistent message (draft auto-clears)
 		s.adapter.b.SendMessage(context.Background(), &bot.SendMessageParams{
 			ChatID: s.chatID,
-			Text:   s.text,
+			Text:   final,
 		})
 	} else {
-		// Edit path: final edit without cursor, or send new if edit fails
 		_, err := s.adapter.b.EditMessageText(context.Background(), &bot.EditMessageTextParams{
 			ChatID:    s.chatID,
 			MessageID: s.msgID,
-			Text:      s.text,
+			Text:      final,
 		})
 		if err != nil {
 			s.adapter.b.SendMessage(context.Background(), &bot.SendMessageParams{
 				ChatID: s.chatID,
-				Text:   s.text,
+				Text:   final,
 			})
 		}
 	}
@@ -193,9 +179,6 @@ func (s *telegramStream) Done() error {
 func (s *telegramStream) Error(text string) error {
 	close(s.stopCh)
 	time.Sleep(flushInterval + 200*time.Millisecond)
-
-	s.mu.Lock()
-	defer s.mu.Unlock()
 
 	s.adapter.b.SendMessage(context.Background(), &bot.SendMessageParams{
 		ChatID: s.chatID,
