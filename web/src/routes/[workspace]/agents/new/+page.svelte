@@ -5,7 +5,6 @@
 	import Button from '$lib/components/ui/button/button.svelte';
 	import Input from '$lib/components/ui/input/input.svelte';
 	import Label from '$lib/components/ui/label/label.svelte';
-	import * as Select from '$lib/components/ui/select';
 	import { api } from '$lib/api';
 	import type { Daemon, Agent, AgentCreateResponse } from '$lib/types';
 	import { onMount } from 'svelte';
@@ -39,6 +38,7 @@
 		if (!name || !daemonId || !harness) return;
 		submitting = true;
 		try {
+			const wid = $page.params.workspace!;
 			const res = await api.agents.create(wid, { name, daemon_id: daemonId, harness, model: model || undefined, personality: personality || undefined, telegram_token: telegramToken || undefined });
 			createdAgent = res.agent;
 			createdToken = res.telegram_token;
@@ -46,7 +46,6 @@
 		} catch (err: unknown) {
 			toast.error(err instanceof Error ? err.message : 'Failed to create agent');
 		} finally {
-			submitting = false;
 		}
 	}
 
@@ -109,30 +108,26 @@
 
 				<div class="space-y-2">
 					<Label for="daemon">Daemon</Label>
-					<Select.Root bind:value={daemonId}>
-						<Select.Trigger class="w-full">
-							<Select.Value placeholder="Select daemon..." />
-						</Select.Trigger>
-						<Select.Content>
-							{#each daemons as d}
-								<Select.Item value={d.id}>{d.name} ({d.status})</Select.Item>
-							{/each}
-						</Select.Content>
-					</Select.Root>
+					<select id="daemon" bind:value={daemonId}
+						class="flex h-9 w-full rounded-md border border-zinc-700 bg-zinc-900 px-3 py-1 text-sm text-zinc-100 focus:outline-none focus:ring-2 focus:ring-emerald-500/50"
+					>
+						<option value="">Select daemon...</option>
+						{#each daemons as d}
+							<option value={d.id}>{d.name} ({d.status})</option>
+						{/each}
+					</select>
 				</div>
 
 				<div class="space-y-2">
 					<Label for="harness">Harness</Label>
-					<Select.Root bind:value={harness} disabled={!daemonId}>
-						<Select.Trigger class="w-full">
-							<Select.Value placeholder="Select harness..." />
-						</Select.Trigger>
-						<Select.Content>
-							{#each availableHarnesses as h}
-								<Select.Item value={h}>{h}</Select.Item>
-							{/each}
-						</Select.Content>
-					</Select.Root>
+					<select id="harness" bind:value={harness} disabled={!daemonId}
+						class="flex h-9 w-full rounded-md border border-zinc-700 bg-zinc-900 px-3 py-1 text-sm text-zinc-100 focus:outline-none focus:ring-2 focus:ring-emerald-500/50 disabled:opacity-50"
+					>
+						<option value="">Select harness...</option>
+						{#each availableHarnesses as h}
+							<option value={h}>{h}</option>
+						{/each}
+					</select>
 				</div>
 
 				<div class="space-y-2">
