@@ -3,6 +3,7 @@ module github.com/rahmanramsi/aegis
 go 1.25.0
 
 require (
+	github.com/caarlos0/env/v11 v11.4.1
 	github.com/coder/websocket v1.8.15
 	github.com/go-chi/chi/v5 v5.3.0
 	github.com/go-chi/cors v1.2.2

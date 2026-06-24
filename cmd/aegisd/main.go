@@ -8,6 +8,7 @@ import (
 	"os/signal"
 	"syscall"
 
+	"github.com/rahmanramsi/aegis/internal/config"
 	"github.com/rahmanramsi/aegis/internal/gateway"
 	"github.com/rahmanramsi/aegis/internal/gateway/msg"
 	"github.com/rahmanramsi/aegis/internal/gateway/router"
@@ -18,12 +19,13 @@ import (
 func main() {
 	slog.SetDefault(slog.New(slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{Level: slog.LevelInfo})))
 
-	dbDSN := os.Getenv("AEGIS_DATABASE_URL")
-	if dbDSN == "" {
-		dbDSN = "./data/gateway.db"
+	cfg, err := config.Load()
+	if err != nil {
+		slog.Error("load config", "err", err)
+		os.Exit(1)
 	}
 
-	s, err := store.Open(dbDSN)
+	s, err := store.Open(cfg.DatabaseURL)
 	if err != nil {
 		slog.Error("open database", "err", err)
 		os.Exit(1)
@@ -42,17 +44,20 @@ func main() {
 		r.HandleWithAgent(ctx, m, adapter, agent)
 	})
 
-	server := gateway.NewServer(s, hub, bm)
-
-	addr := os.Getenv("AEGIS_ADDR")
-	if addr == "" {
-		addr = ":8080"
+	// Restore bots from env
+	for _, tok := range cfg.TelegramTokens {
+		bm.AddBot(context.Background(), tok)
+	}
+	if cfg.TelegramToken != "" {
+		bm.AddBot(context.Background(), cfg.TelegramToken)
 	}
 
-	slog.Info("gateway starting", "addr", addr)
+	server := gateway.NewServer(s, hub, bm)
+
+	slog.Info("gateway starting", "addr", cfg.Addr)
 
 	go func() {
-		if err := http.ListenAndServe(addr, server); err != nil {
+		if err := http.ListenAndServe(cfg.Addr, server); err != nil {
 			slog.Error("server", "err", err)
 		}
 	}()

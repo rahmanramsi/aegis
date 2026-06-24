@@ -1,63 +1,26 @@
 package config
 
 import (
-	"os"
-	"strconv"
 	"time"
+
+	"github.com/caarlos0/env/v11"
 )
 
 type Config struct {
-	GatewayURL     string
-	DaemonID       string
-	DaemonName     string
-	Token          string
-	WorkspacesRoot string
-	MaxConcurrent  int
-	AgentTimeout   time.Duration
-	LogLevel       string
+	GatewayURL     string        `env:"AEGIS_GATEWAY_URL" envDefault:"ws://localhost:8080/ws/daemon"`
+	DaemonID       string        `env:"AEGIS_DAEMON_ID"`
+	DaemonName     string        `env:"AEGIS_DAEMON_NAME" envDefault:"aegis-agent"`
+	Token          string        `env:"AEGIS_DAEMON_TOKEN"`
+	WorkspacesRoot string        `env:"AEGIS_WORKSPACES_ROOT" envDefault:"./workspaces"`
+	MaxConcurrent  int           `env:"AEGIS_MAX_CONCURRENT" envDefault:"5"`
+	AgentTimeout   time.Duration `env:"AEGIS_AGENT_TIMEOUT" envDefault:"30m"`
+	LogLevel       string        `env:"AEGIS_LOG_LEVEL" envDefault:"info"`
 }
 
-func Load() *Config {
-	cfg := &Config{
-		GatewayURL:     getEnv("AEGIS_GATEWAY_URL", "ws://localhost:8080/ws/daemon"),
-		DaemonID:       os.Getenv("AEGIS_DAEMON_ID"),
-		DaemonName:     getEnv("AEGIS_DAEMON_NAME", "aegis-agent"),
-		Token:          os.Getenv("AEGIS_DAEMON_TOKEN"),
-		WorkspacesRoot: getEnv("AEGIS_WORKSPACES_ROOT", "./workspaces"),
-		MaxConcurrent:  getEnvInt("AEGIS_MAX_CONCURRENT", 5),
-		AgentTimeout:   getEnvDuration("AEGIS_AGENT_TIMEOUT", 30*time.Minute),
-		LogLevel:       getEnv("AEGIS_LOG_LEVEL", "info"),
+func Load() (*Config, error) {
+	cfg := &Config{}
+	if err := env.Parse(cfg); err != nil {
+		return nil, err
 	}
-	return cfg
-}
-
-func getEnv(key, fallback string) string {
-	if v := os.Getenv(key); v != "" {
-		return v
-	}
-	return fallback
-}
-
-func getEnvInt(key string, fallback int) int {
-	v := os.Getenv(key)
-	if v == "" {
-		return fallback
-	}
-	n, err := strconv.Atoi(v)
-	if err != nil {
-		return fallback
-	}
-	return n
-}
-
-func getEnvDuration(key string, fallback time.Duration) time.Duration {
-	v := os.Getenv(key)
-	if v == "" {
-		return fallback
-	}
-	d, err := time.ParseDuration(v)
-	if err != nil {
-		return fallback
-	}
-	return d
+	return cfg, nil
 }

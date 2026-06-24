@@ -15,7 +15,11 @@ import (
 )
 
 func main() {
-	cfg := config.Load()
+	cfg, err := config.Load()
+	if err != nil {
+		slog.Error("load config", "err", err)
+		os.Exit(1)
+	}
 
 	level := slog.LevelInfo
 	if cfg.LogLevel == "debug" {
