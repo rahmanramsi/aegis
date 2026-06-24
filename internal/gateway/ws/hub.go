@@ -79,18 +79,22 @@ func (h *Hub) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		daemonID = uuid.NewString()
 	}
 
-	_, err = h.Store.GetDaemon(daemonID)
+	d, err := h.Store.GetDaemon(daemonID)
 	if err != nil {
 		name := msg.DaemonName
 		if name == "" {
 			name = "auto"
 		}
-		d, err := h.Store.CreateDaemon(user.ID, name, tokenHash)
+		// Try to find existing daemon by user+name (daemon regenerates UUID each start)
+		d, err = h.Store.GetDaemonByUserAndName(user.ID, name)
 		if err != nil {
-			slog.Error("ws: create daemon", "err", err)
-			wsjson.Write(ctx, conn, protocol.Message{Type: protocol.TypeError, Content: "failed to create daemon"})
-			conn.Close(websocket.StatusInternalError, "create daemon failed")
-			return
+			d, err = h.Store.CreateDaemon(user.ID, name, tokenHash)
+			if err != nil {
+				slog.Error("ws: create daemon", "err", err)
+				wsjson.Write(ctx, conn, protocol.Message{Type: protocol.TypeError, Content: "failed to create daemon"})
+				conn.Close(websocket.StatusInternalError, "create daemon failed")
+				return
+			}
 		}
 		daemonID = d.ID
 	}

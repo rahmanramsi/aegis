@@ -105,6 +105,17 @@ func (s *Store) GetDaemon(id string) (*Daemon, error) {
 	return &d, nil
 }
 
+func (s *Store) GetDaemonByUserAndName(userID, name string) (*Daemon, error) {
+	var d Daemon
+	err := s.DB.QueryRow(
+		"SELECT id, user_id, name, token_hash, status, last_seen, harness_models, created_at FROM daemons WHERE user_id = ? AND name = ?", userID, name,
+	).Scan(&d.ID, &d.UserID, &d.Name, &d.TokenHash, &d.Status, &d.LastSeen, &d.HarnessModelsJSON, &d.CreatedAt)
+	if err != nil {
+		return nil, err
+	}
+	return &d, nil
+}
+
 func (s *Store) DeleteDaemon(id string) error {
 	result, err := s.DB.Exec("DELETE FROM daemons WHERE id = ?", id)
 	if err != nil {
