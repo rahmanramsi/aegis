@@ -12,20 +12,15 @@ import (
 
 const flushInterval = 200 * time.Millisecond
 
-// telegramStream buffers text and edits a single Telegram message at intervals,
-// creating a smooth streaming typing effect.
 type telegramStream struct {
-	adapter    *TelegramAdapter
-	chatID     int64
-	messageID  int
-	text       string
-	mu         sync.Mutex
-	sentFirst  bool
-	dirty      bool
-	done       bool
-	flushCh    chan struct{}
-	stopCh     chan struct{}
-	flushTimer *time.Timer
+	adapter   *TelegramAdapter
+	chatID    int64
+	messageID int
+	text      string
+	mu        sync.Mutex
+	sentFirst bool
+	dirty     bool
+	stopCh    chan struct{}
 }
 
 func (t *TelegramAdapter) SendStream(chatID string) StreamSender {
@@ -70,7 +65,6 @@ func (s *telegramStream) flush() {
 		msg, err := s.adapter.b.SendMessage(context.Background(), &bot.SendMessageParams{
 			ChatID: s.chatID,
 			Text:   s.text,
-			LinkPreviewOptions: &bot.LinkPreviewOptions{IsDisabled: true},
 		})
 		if err != nil {
 			slog.Warn("stream: send initial", "err", err)
@@ -82,10 +76,9 @@ func (s *telegramStream) flush() {
 	}
 
 	_, err := s.adapter.b.EditMessageText(context.Background(), &bot.EditMessageTextParams{
-		ChatID:      s.chatID,
-		MessageID:   s.messageID,
-		Text:        s.text,
-		LinkPreview: &bot.LinkPreviewOptions{IsDisabled: true},
+		ChatID:    s.chatID,
+		MessageID: s.messageID,
+		Text:      s.text,
 	})
 	if err != nil {
 		slog.Warn("stream: edit", "err", err)
@@ -102,7 +95,6 @@ func (s *telegramStream) Append(text string) error {
 
 func (s *telegramStream) Done() error {
 	close(s.stopCh)
-	// Wait for final flush
 	time.Sleep(flushInterval + 50*time.Millisecond)
 
 	s.mu.Lock()
@@ -111,12 +103,11 @@ func (s *telegramStream) Done() error {
 	if !s.sentFirst && s.text == "" {
 		s.adapter.b.SendMessage(context.Background(), &bot.SendMessageParams{
 			ChatID: s.chatID,
-			Text:   "✓ Done",
+			Text:   "Done",
 		})
 		return nil
 	}
 
-	// Final edit with complete text
 	if s.messageID != 0 {
 		_, err := s.adapter.b.EditMessageText(context.Background(), &bot.EditMessageTextParams{
 			ChatID:    s.chatID,
@@ -141,7 +132,7 @@ func (s *telegramStream) Error(text string) error {
 	defer s.mu.Unlock()
 
 	if s.messageID != 0 {
-		edited := s.text + "\n\n\u274c " + text
+		edited := s.text + "\n\n" + text
 		s.adapter.b.EditMessageText(context.Background(), &bot.EditMessageTextParams{
 			ChatID:    s.chatID,
 			MessageID: s.messageID,
@@ -150,7 +141,7 @@ func (s *telegramStream) Error(text string) error {
 	} else {
 		s.adapter.b.SendMessage(context.Background(), &bot.SendMessageParams{
 			ChatID: s.chatID,
-			Text:   "\u274c " + text,
+			Text:   text,
 		})
 	}
 	return nil
