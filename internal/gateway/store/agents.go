@@ -23,7 +23,7 @@ type Agent struct {
 	UpdatedAt         string `json:"updated_at"`
 }
 
-func (s *Store) CreateAgent(workspaceID, daemonID, name, harness, model, extraArgs, personality, telegramTokenHash string, enabled bool) (*Agent, error) {
+func (s *Store) CreateAgent(workspaceID, daemonID, name, harness, model, extraArgs, personality, telegramTokenHash, telegramTokenRaw string, enabled bool) (*Agent, error) {
 	now := time.Now().UTC().Format(time.RFC3339)
 	enabledInt := 0
 	if enabled {
@@ -45,8 +45,8 @@ func (s *Store) CreateAgent(workspaceID, daemonID, name, harness, model, extraAr
 		UpdatedAt:         now,
 	}
 	_, err := s.DB.Exec(
-		"INSERT INTO agents (id, workspace_id, daemon_id, name, harness, model, extra_args, enabled, personality, telegram_token_hash, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
-		a.ID, a.WorkspaceID, a.DaemonID, a.Name, a.Harness, a.Model, a.ExtraArgs, enabledInt, a.Personality, a.TelegramTokenHash, a.CreatedAt, a.UpdatedAt,
+		"INSERT INTO agents (id, workspace_id, daemon_id, name, harness, model, extra_args, enabled, personality, telegram_token_hash, telegram_token_raw, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+		a.ID, a.WorkspaceID, a.DaemonID, a.Name, a.Harness, a.Model, a.ExtraArgs, enabledInt, a.Personality, a.TelegramTokenHash, telegramTokenRaw, a.CreatedAt, a.UpdatedAt,
 	)
 	if err != nil {
 		return nil, err
@@ -135,4 +135,21 @@ func (s *Store) GetAgentByTelegramToken(tokenHash string) (*Agent, error) {
 		        COALESCE(telegram_token_hash, '') as telegram_token_hash, created_at, updated_at
 		 FROM agents WHERE telegram_token_hash = ? AND enabled = 1`, tokenHash,
 	))
+}
+
+func (s *Store) GetAllTelegramTokens() ([]string, error) {
+	rows, err := s.DB.Query("SELECT telegram_token_raw FROM agents WHERE telegram_token_raw != '' AND enabled = 1")
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var tokens []string
+	for rows.Next() {
+		var t string
+		if err := rows.Scan(&t); err != nil {
+			return tokens, err
+		}
+		tokens = append(tokens, t)
+	}
+	return tokens, rows.Err()
 }

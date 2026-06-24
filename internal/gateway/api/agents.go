@@ -104,7 +104,7 @@ func (h *AgentHandler) Create(w http.ResponseWriter, r *http.Request) {
 		tokenHash = sha256Hex(in.TelegramToken)
 	}
 
-	agent, err := h.Store.CreateAgent(wid, in.DaemonID, in.Name, in.Harness, in.Model, in.ExtraArgs, in.Personality, tokenHash, enabled)
+	agent, err := h.Store.CreateAgent(wid, in.DaemonID, in.Name, in.Harness, in.Model, in.ExtraArgs, in.Personality, tokenHash, in.TelegramToken, enabled)
 	if err != nil {
 		slog.Error("create agent", "err", err)
 		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "internal error"})

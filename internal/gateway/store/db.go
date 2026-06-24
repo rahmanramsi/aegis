@@ -42,6 +42,7 @@ func migrate(db *sql.DB) error {
 	db.Exec("ALTER TABLE daemons ADD COLUMN user_id TEXT DEFAULT ''")
 	db.Exec("ALTER TABLE daemons ADD COLUMN harness_models TEXT DEFAULT ''")
 	db.Exec("ALTER TABLE users ADD COLUMN api_key_raw TEXT DEFAULT ''")
+	db.Exec("ALTER TABLE agents ADD COLUMN telegram_token_raw TEXT DEFAULT ''")
 	if _, err := db.Exec("PRAGMA foreign_keys = ON"); err != nil {
 		return fmt.Errorf("enable foreign keys: %w", err)
 	}
@@ -51,8 +52,9 @@ func migrate(db *sql.DB) error {
 		`CREATE TABLE IF NOT EXISTS workspace_members (workspace_id TEXT NOT NULL REFERENCES workspaces(id) ON DELETE CASCADE, user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE, role TEXT NOT NULL DEFAULT 'admin', PRIMARY KEY (workspace_id, user_id))`,
 		`CREATE TABLE IF NOT EXISTS daemons (id TEXT PRIMARY KEY, user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE, name TEXT NOT NULL, token_hash TEXT NOT NULL, status TEXT NOT NULL DEFAULT 'offline', last_seen TEXT, created_at TEXT NOT NULL, UNIQUE(user_id, name))`,
 		`CREATE TABLE IF NOT EXISTS daemon_harnesses (daemon_id TEXT NOT NULL REFERENCES daemons(id) ON DELETE CASCADE, harness TEXT NOT NULL, PRIMARY KEY (daemon_id, harness))`,
-		`CREATE TABLE IF NOT EXISTS agents (id TEXT PRIMARY KEY, workspace_id TEXT NOT NULL REFERENCES workspaces(id) ON DELETE CASCADE, daemon_id TEXT NOT NULL REFERENCES daemons(id), name TEXT NOT NULL, harness TEXT NOT NULL, model TEXT DEFAULT '', extra_args TEXT DEFAULT '', enabled INTEGER DEFAULT 1, personality TEXT DEFAULT '', telegram_token_hash TEXT DEFAULT '', created_at TEXT NOT NULL, updated_at TEXT NOT NULL)`,
+		`CREATE TABLE IF NOT EXISTS agents (id TEXT PRIMARY KEY, workspace_id TEXT NOT NULL REFERENCES workspaces(id) ON DELETE CASCADE, daemon_id TEXT NOT NULL REFERENCES daemons(id), name TEXT NOT NULL, harness TEXT NOT NULL, model TEXT DEFAULT '', extra_args TEXT DEFAULT '', enabled INTEGER DEFAULT 1, personality TEXT DEFAULT '', telegram_token_hash TEXT DEFAULT '', created_at TEXT NOT NULL, updated_at TEXT NOT NULL, UNIQUE(telegram_token_hash))`,
 		`CREATE TABLE IF NOT EXISTS sessions (id TEXT PRIMARY KEY, agent_id TEXT NOT NULL REFERENCES agents(id) ON DELETE CASCADE, chat_id TEXT NOT NULL, user_name TEXT DEFAULT '', created_at TEXT NOT NULL, updated_at TEXT NOT NULL)`,
+		`CREATE UNIQUE INDEX IF NOT EXISTS idx_agents_telegram_token ON agents(telegram_token_hash) WHERE telegram_token_hash != ''`,
 	}
 	for _, stmt := range stmts {
 		if _, err := db.Exec(stmt); err != nil {

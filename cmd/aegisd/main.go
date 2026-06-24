@@ -52,6 +52,12 @@ func main() {
 		bm.AddBot(context.Background(), cfg.TelegramToken)
 	}
 
+	// Restore agents' Telegram bots from DB
+	tokens, _ := s.GetAllTelegramTokens()
+	for _, tok := range tokens {
+		bm.AddBot(context.Background(), tok)
+	}
+
 	server := gateway.NewServer(s, hub, bm)
 
 	slog.Info("gateway starting", "addr", cfg.Addr)
