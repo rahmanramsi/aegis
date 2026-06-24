@@ -89,21 +89,23 @@ func (s *Server) registerRoutes() {
 	// WebSocket
 	mux.HandleFunc("GET /ws/daemon", s.Hub.ServeHTTP)
 
-	// Static files with SPA fallback — must be last
+	// Static files with SPA fallback — must be last (GET / is catch-all in Go 1.22+)
 	fileServer := http.FileServer(http.FS(s.staticFS))
 	mux.HandleFunc("GET /", func(w http.ResponseWriter, r *http.Request) {
 		path := strings.TrimPrefix(r.URL.Path, "/")
-		if path == "" {
-			path = "index.html"
+		if path == "" || path == "index.html" {
+			fileServer.ServeHTTP(w, r)
+			return
 		}
-		// Try direct file
+		// Check if it's a real static file
 		f, err := s.staticFS.Open(path)
 		if err == nil {
 			f.Close()
 			fileServer.ServeHTTP(w, r)
 			return
 		}
-		// SPA fallback
+		// SPA fallback — serve index.html
+		r.URL.Path = "/"
 		fileServer.ServeHTTP(w, r)
 	})
 
