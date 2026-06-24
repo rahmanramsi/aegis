@@ -17,6 +17,8 @@
 	let loading = $state(true);
 	let error = $state<string | null>(null);
 
+	let enrollKey = $state('');
+	let enrollCopied = $state(false);
 
 	async function generateEnrollKey() {
 		const resp = await fetch('/api/v1/me/enrollment-key', {
