@@ -25,6 +25,10 @@
 
 	const selectedDaemon = $derived(daemons.find((d: Daemon) => d.id === daemonId));
 	const availableHarnesses = $derived(selectedDaemon?.harnesses ?? []);
+	const availableModels = $derived(selectedDaemon?.harness_models?.[harness] ?? []);
+
+	// Reset model when harness changes
+	$effect(() => { harness; model = ''; });
 
 	onMount(() => {
 		api.daemons.list()
@@ -131,7 +135,18 @@
 
 				<div class="space-y-2">
 					<Label for="model">Model (optional)</Label>
-					<Input id="model" placeholder="e.g. claude-sonnet-4-20250514" bind:value={model} />
+					{#if availableModels.length > 0}
+						<select id="model" bind:value={model}
+							class="flex h-9 w-full rounded-md border border-zinc-700 bg-zinc-900 px-3 py-1 text-sm text-zinc-100 focus:outline-none focus:ring-2 focus:ring-emerald-500/50"
+						>
+							<option value="">Default</option>
+							{#each availableModels as m}
+								<option value={m}>{m}</option>
+							{/each}
+						</select>
+					{:else}
+						<Input id="model" placeholder="e.g. claude-sonnet-4-20250514" bind:value={model} />
+					{/if}
 				</div>
 
 				<div class="space-y-2">

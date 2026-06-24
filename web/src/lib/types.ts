@@ -8,10 +8,11 @@ export interface Workspace {
 
 export interface Daemon {
 	id: string;
-	workspace_id: string;
+	user_id: string;
 	name: string;
 	status: 'online' | 'offline';
 	harnesses: string[];
+	harness_models: Record<string, string[]>;
 	last_seen: string;
 	created_at: string;
 }
