@@ -17,7 +17,9 @@ func NewGeminiRunner(path, model string) *GeminiRunner {
 
 func (r *GeminiRunner) Name() string    { return "gemini" }
 func (r *GeminiRunner) Available() bool { _, err := exec.LookPath("gemini"); return err == nil }
-func (r *GeminiRunner) Models(_ context.Context) ([]string, error) { return nil, nil }
+func (r *GeminiRunner) Models(_ context.Context) ([]string, error) {
+	return []string{"gemini-2.5-pro", "gemini-2.5-flash", "gemini-2.0-flash"}, nil
+}
 
 func (r *GeminiRunner) Run(ctx context.Context, req RunRequest) (<-chan StreamEvent, error) {
 	ch := make(chan StreamEvent, 64)

@@ -14,7 +14,9 @@ func NewCopilotRunner(path string) *CopilotRunner { return &CopilotRunner{path: 
 
 func (r *CopilotRunner) Name() string    { return "copilot" }
 func (r *CopilotRunner) Available() bool { _, err := exec.LookPath("copilot"); return err == nil }
-func (r *CopilotRunner) Models(_ context.Context) ([]string, error) { return nil, nil }
+func (r *CopilotRunner) Models(_ context.Context) ([]string, error) {
+	return []string{"gpt-5.1", "gpt-5", "gpt-4.1"}, nil
+}
 
 func (r *CopilotRunner) Run(ctx context.Context, req RunRequest) (<-chan StreamEvent, error) {
 	ch := make(chan StreamEvent, 64)
