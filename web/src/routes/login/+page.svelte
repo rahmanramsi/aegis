@@ -57,13 +57,14 @@
 			<Card.Content class="space-y-4">
 				<div class="space-y-2">
 					<Label for="email">Email</Label>
-					<Input
+					<input
 						id="email"
 						type="text"
-						placeholder="you@example.com"
 						bind:value={email}
+						placeholder="you@example.com"
 						required
 						autocomplete="email"
+						class="flex h-9 w-full rounded-md border border-zinc-700 bg-zinc-900 px-3 py-1 text-sm text-zinc-100 placeholder:text-zinc-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/50"
 					/>
 				</div>
 
