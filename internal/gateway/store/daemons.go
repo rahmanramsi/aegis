@@ -45,7 +45,14 @@ func (s *Store) AuthenticateDaemon(daemonID, tokenHash string, harnesses []strin
 		return err
 	}
 	if storedHash != tokenHash {
-		return ErrInvalidToken
+		// User's API key may have changed — check if token matches user's current key
+		var userID string
+		err := s.DB.QueryRow("SELECT u.api_key_hash, d.user_id FROM daemons d JOIN users u ON u.id = d.user_id WHERE d.id = ?", daemonID).Scan(&storedHash, &userID)
+		if err != nil || storedHash != tokenHash {
+			return ErrInvalidToken
+		}
+		// User's API key matches — update daemon's token_hash
+		s.DB.Exec("UPDATE daemons SET token_hash = ? WHERE id = ?", tokenHash, daemonID)
 	}
 
 	now := time.Now().UTC().Format(time.RFC3339)
