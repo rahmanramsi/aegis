@@ -4,6 +4,7 @@
 import Button from '$lib/components/ui/button/button.svelte';
 import Input from '$lib/components/ui/input/input.svelte';
 import Label from '$lib/components/ui/label/label.svelte';
+	import Separator from '$lib/components/ui/separator/separator.svelte';
 import Skeleton from '$lib/components/ui/skeleton/skeleton.svelte';
 	import * as Dialog from '$lib/components/ui/dialog';
 	import { api } from '$lib/api';
