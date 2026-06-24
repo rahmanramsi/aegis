@@ -28,11 +28,10 @@
 			.catch((e: Error) => { error = e.message; })
 			.finally(() => { loading = false; });
 	});
-
 	function getCommand(): string {
 		const key = getToken();
 		const name = daemonName.trim() || 'aegis-agent';
-		return `AEGIS_API_KEY=${key} AEGIS_DAEMON_NAME=${name} AEGIS_GATEWAY_URL=ws://localhost:8080/api/v1/ws ./aegis-agent`;
+		return `AEGIS_API_KEY=${key} AEGIS_DAEMON_NAME=${name} AEGIS_GATEWAY_URL=ws://localhost:8080/ws/daemon ./aegis-agent`;
 	}
 
 	async function copyApiKey() {
