@@ -26,7 +26,7 @@ func (r *ClaudeRunner) Models(ctx context.Context) ([]string, error) {
 		return parseModels(out), nil
 	}
 	// CLI doesn't support model listing — return known Anthropic models
-	return []string{"claude-sonnet-4-20250514", "claude-opus-4-20250514", "claude-haiku-3-5-20241022"}, nil
+	return []string{"claude-sonnet-4-6", "claude-opus-4-7", "claude-haiku-4-5-20251001", "claude-opus-4-6", "claude-sonnet-4-5"}, nil
 }
 
 func (r *ClaudeRunner) Run(ctx context.Context, req RunRequest) (<-chan StreamEvent, error) {

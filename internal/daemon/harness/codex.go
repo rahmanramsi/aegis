@@ -25,7 +25,7 @@ func (r *CodexRunner) Models(ctx context.Context) ([]string, error) {
 	if err == nil && len(out) > 0 {
 		return parseModels(out), nil
 	}
-	return []string{"gpt-5.1-codex", "gpt-5.1", "gpt-5", "gpt-4.1", "o3", "o4-mini"}, nil
+	return []string{"gpt-5.5", "gpt-5.5-mini", "gpt-5.4", "gpt-5.4-mini", "gpt-5.3-codex", "gpt-5", "o3", "o3-mini"}, nil
 }
 
 func (r *CodexRunner) Run(ctx context.Context, req RunRequest) (<-chan StreamEvent, error) {

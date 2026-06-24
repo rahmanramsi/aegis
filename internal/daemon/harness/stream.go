@@ -2,6 +2,7 @@ package harness
 
 import (
 	"bufio"
+	"fmt"
 	"io"
 	"strings"
 )
@@ -22,6 +23,24 @@ func parseModels(out []byte) []string {
 		line = strings.TrimSpace(line)
 		if line != "" {
 			models = append(models, line)
+		}
+	}
+	return models
+}
+
+// parsePiModels parses `pi --list-models` table output into provider/model format.
+// Format: "provider      model                       context  max-out  thinking  images"
+func parsePiModels(out []byte) []string {
+	lines := strings.Split(strings.TrimSpace(string(out)), "\n")
+	if len(lines) < 2 {
+		return nil
+	}
+	// Skip header row
+	var models []string
+	for _, line := range lines[1:] {
+		fields := strings.Fields(line)
+		if len(fields) >= 2 {
+			models = append(models, fmt.Sprintf("%s/%s", fields[0], fields[1]))
 		}
 	}
 	return models

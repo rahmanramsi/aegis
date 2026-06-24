@@ -20,12 +20,15 @@ func (r *PiRunner) Models(ctx context.Context) ([]string, error) {
 	if path == "" {
 		path = "pi"
 	}
-	cmd := exec.CommandContext(ctx, path, "models")
-	out, err := cmd.Output()
+	cmd := exec.CommandContext(ctx, path, "--list-models")
+	out, err := cmd.CombinedOutput()
 	if err == nil && len(out) > 0 {
-		return parseModels(out), nil
+		parsed := parsePiModels(out)
+		if len(parsed) > 0 {
+			return parsed, nil
+		}
 	}
-	return nil, nil // pi doesn't support model listing
+	return nil, nil
 }
 
 func (r *PiRunner) Run(ctx context.Context, req RunRequest) (<-chan StreamEvent, error) {
