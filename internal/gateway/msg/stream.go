@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/go-telegram/bot"
+	"github.com/go-telegram/bot/models"
 )
 
 const (
@@ -74,7 +75,6 @@ func (s *telegramStream) flush() {
 	}
 	s.dirty = false
 
-	// Hermes: apply MarkdownV2 + cursor
 	formatted := FormatTelegramMarkdown(s.text) + cursorChar
 
 	if s.draftsEnabled {
@@ -86,15 +86,16 @@ func (s *telegramStream) flush() {
 
 func (s *telegramStream) flushDraft(text string) {
 	_, err := s.adapter.b.SendMessageDraft(context.Background(), &bot.SendMessageDraftParams{
-		ChatID:  s.chatID,
-		DraftID: strconv.FormatInt(s.draftID, 10),
-		Text:    text,
+		ChatID:    s.chatID,
+		DraftID:   strconv.FormatInt(s.draftID, 10),
+		Text:      text,
+		ParseMode: models.ParseModeMarkdown,
 	})
 	if err != nil {
 		s.floodErrors++
 		if s.floodErrors >= maxFloodErrors {
 			s.draftsEnabled = false
-			slog.Warn("stream: drafts disabled, falling back to edit path")
+			slog.Warn("stream: drafts disabled, falling back to edit")
 			s.sendInitialLocked(FormatTelegramMarkdown(s.text) + cursorChar)
 		}
 		return
@@ -111,6 +112,7 @@ func (s *telegramStream) flushEdit(text string) {
 		ChatID:    s.chatID,
 		MessageID: s.msgID,
 		Text:      text,
+		ParseMode: models.ParseModeMarkdown,
 	})
 	if err != nil {
 		slog.Warn("stream: edit failed", "err", err)
@@ -119,8 +121,9 @@ func (s *telegramStream) flushEdit(text string) {
 
 func (s *telegramStream) sendInitialLocked(text string) {
 	msg, err := s.adapter.b.SendMessage(context.Background(), &bot.SendMessageParams{
-		ChatID: s.chatID,
-		Text:   text,
+		ChatID:    s.chatID,
+		Text:      text,
+		ParseMode: models.ParseModeMarkdown,
 	})
 	if err != nil {
 		slog.Warn("stream: send failed", "err", err)
@@ -146,10 +149,7 @@ func (s *telegramStream) Done() error {
 	defer s.mu.Unlock()
 
 	if s.text == "" {
-		s.adapter.b.SendMessage(context.Background(), &bot.SendMessageParams{
-			ChatID: s.chatID,
-			Text:   "Done",
-		})
+		s.adapter.b.SendMessage(context.Background(), &bot.SendMessageParams{ChatID: s.chatID, Text: "Done"})
 		return nil
 	}
 
@@ -157,19 +157,22 @@ func (s *telegramStream) Done() error {
 
 	if s.draftsEnabled {
 		s.adapter.b.SendMessage(context.Background(), &bot.SendMessageParams{
-			ChatID: s.chatID,
-			Text:   final,
+			ChatID:    s.chatID,
+			Text:      final,
+			ParseMode: models.ParseModeMarkdown,
 		})
 	} else {
 		_, err := s.adapter.b.EditMessageText(context.Background(), &bot.EditMessageTextParams{
 			ChatID:    s.chatID,
 			MessageID: s.msgID,
 			Text:      final,
+			ParseMode: models.ParseModeMarkdown,
 		})
 		if err != nil {
 			s.adapter.b.SendMessage(context.Background(), &bot.SendMessageParams{
-				ChatID: s.chatID,
-				Text:   final,
+				ChatID:    s.chatID,
+				Text:      final,
+				ParseMode: models.ParseModeMarkdown,
 			})
 		}
 	}
@@ -179,11 +182,7 @@ func (s *telegramStream) Done() error {
 func (s *telegramStream) Error(text string) error {
 	close(s.stopCh)
 	time.Sleep(flushInterval + 200*time.Millisecond)
-
-	s.adapter.b.SendMessage(context.Background(), &bot.SendMessageParams{
-		ChatID: s.chatID,
-		Text:   text,
-	})
+	s.adapter.b.SendMessage(context.Background(), &bot.SendMessageParams{ChatID: s.chatID, Text: text})
 	return nil
 }
 
