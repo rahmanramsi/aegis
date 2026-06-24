@@ -27,6 +27,8 @@ func NewServer(s *store.Store, hub *ws.Hub, bm *msg.BotManager) *Server {
 		Hub:        hub,
 		BotManager: bm,
 	}
+	// All daemons are offline on startup — they reconnect via WebSocket
+	s.SetAllDaemonsOffline()
 	server.registerRoutes()
 	return server
 }

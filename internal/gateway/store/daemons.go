@@ -129,6 +129,12 @@ func (s *Store) SetDaemonOffline(id string) error {
 	return err
 }
 
+func (s *Store) SetAllDaemonsOffline() error {
+	now := time.Now().UTC().Format(time.RFC3339)
+	_, err := s.DB.Exec("UPDATE daemons SET status = 'offline', last_seen = ?", now)
+	return err
+}
+
 func (s *Store) GetDaemonHarnesses(daemonID string) ([]string, error) {
 	rows, err := s.DB.Query("SELECT harness FROM daemon_harnesses WHERE daemon_id = ?", daemonID)
 	if err != nil {
