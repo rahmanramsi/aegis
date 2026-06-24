@@ -53,7 +53,7 @@ func (r *Router) onTaskEvent(taskID string, event protocol.Message) {
 	case protocol.TypeStdout:
 		pt.stream.Append(event.Content)
 	case protocol.TypeStderr:
-		pt.stream.Append(event.Content)
+		// ignore — most CLIs mirror stdout to stderr
 	case protocol.TypeDone:
 		pt.stream.Done()
 	case protocol.TypeError:
