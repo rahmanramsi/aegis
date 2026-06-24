@@ -24,7 +24,8 @@ type Message struct {
 	DaemonID   string   `json:"daemon_id,omitempty"`
 	Token      string   `json:"token,omitempty"`
 	DaemonName string   `json:"daemon_name,omitempty"`
-	Harnesses  []string `json:"harnesses,omitempty"`
+	Harnesses  []string            `json:"harnesses,omitempty"`
+	HarnessModels map[string][]string `json:"harness_models,omitempty"`
 
 	// Task (gateway → daemon)
 	Harness   string   `json:"harness,omitempty"`

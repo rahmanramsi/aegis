@@ -3,6 +3,7 @@ package harness
 import (
 	"context"
 	"os/exec"
+	"strings"
 	"sync"
 )
 
@@ -17,6 +18,27 @@ func NewOpenCodeRunner(path, model string) *OpenCodeRunner {
 
 func (r *OpenCodeRunner) Name() string    { return "opencode" }
 func (r *OpenCodeRunner) Available() bool { _, err := exec.LookPath("opencode"); return err == nil }
+
+func (r *OpenCodeRunner) Models(ctx context.Context) ([]string, error) {
+	path := r.path
+	if path == "" {
+		path = "opencode"
+	}
+	cmd := exec.CommandContext(ctx, path, "models")
+	out, err := cmd.Output()
+	if err != nil {
+		return nil, nil // models listing not critical
+	}
+	lines := strings.Split(strings.TrimSpace(string(out)), "\n")
+	var models []string
+	for _, line := range lines {
+		line = strings.TrimSpace(line)
+		if line != "" {
+			models = append(models, line)
+		}
+	}
+	return models, nil
+}
 
 func (r *OpenCodeRunner) Run(ctx context.Context, req RunRequest) (<-chan StreamEvent, error) {
 	ch := make(chan StreamEvent, 64)

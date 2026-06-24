@@ -27,5 +27,6 @@ type RunRequest struct {
 type Runner interface {
 	Name() string
 	Available() bool
+	Models(ctx context.Context) ([]string, error)
 	Run(ctx context.Context, req RunRequest) (<-chan StreamEvent, error)
 }

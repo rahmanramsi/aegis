@@ -28,7 +28,8 @@ type createDaemonResponse struct {
 
 type daemonWithHarnesses struct {
 	store.Daemon
-	Harnesses []string `json:"harnesses"`
+	Harnesses      []string            `json:"harnesses"`
+	HarnessModels  map[string][]string `json:"harness_models"`
 }
 
 func (h *DaemonHandler) List(w http.ResponseWriter, r *http.Request) {
@@ -47,7 +48,11 @@ func (h *DaemonHandler) List(w http.ResponseWriter, r *http.Request) {
 	out := make([]daemonWithHarnesses, len(daemons))
 	for i, d := range daemons {
 		harns, _ := h.Store.GetDaemonHarnesses(d.ID)
-		out[i] = daemonWithHarnesses{Daemon: d, Harnesses: harns}
+		var models map[string][]string
+		if d.HarnessModelsJSON != "" {
+			json.Unmarshal([]byte(d.HarnessModelsJSON), &models)
+		}
+		out[i] = daemonWithHarnesses{Daemon: d, Harnesses: harns, HarnessModels: models}
 	}
 	json.NewEncoder(w).Encode(out)
 }

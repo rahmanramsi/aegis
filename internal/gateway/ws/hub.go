@@ -4,12 +4,12 @@ import (
 	"context"
 	"crypto/sha256"
 	"encoding/hex"
+	"encoding/json"
 	"fmt"
 	"log/slog"
 	"net/http"
 	"sync"
 	"time"
-
 	"github.com/coder/websocket"
 	"github.com/coder/websocket/wsjson"
 	"github.com/google/uuid"
@@ -96,7 +96,8 @@ func (h *Hub) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 	msg.DaemonID = daemonID
 
-	if err := h.Store.AuthenticateDaemon(daemonID, tokenHash, msg.Harnesses); err != nil {
+	modelsJSON, _ := json.Marshal(msg.HarnessModels)
+	if err := h.Store.AuthenticateDaemon(daemonID, tokenHash, msg.Harnesses, string(modelsJSON)); err != nil {
 		slog.Error("auth daemon", "err", err, "daemon_id", daemonID)
 		wsjson.Write(ctx, conn, protocol.Message{Type: protocol.TypeError, Content: err.Error()})
 		conn.Close(websocket.StatusPolicyViolation, "auth failed")

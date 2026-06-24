@@ -40,6 +40,7 @@ func Open(dsn string) (*Store, error) {
 func migrate(db *sql.DB) error {
 	// Schema evolution (ignored if columns already exist)
 	db.Exec("ALTER TABLE daemons ADD COLUMN user_id TEXT DEFAULT ''")
+	db.Exec("ALTER TABLE daemons ADD COLUMN harness_models TEXT DEFAULT ''")
 	if _, err := db.Exec("PRAGMA foreign_keys = ON"); err != nil {
 		return fmt.Errorf("enable foreign keys: %w", err)
 	}

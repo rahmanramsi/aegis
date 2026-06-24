@@ -15,6 +15,7 @@ func NewPiRunner(path, model string) *PiRunner { return &PiRunner{path: path, mo
 
 func (r *PiRunner) Name() string    { return "pi" }
 func (r *PiRunner) Available() bool { _, err := exec.LookPath("pi"); return err == nil }
+func (r *PiRunner) Models(_ context.Context) ([]string, error) { return nil, nil }
 
 func (r *PiRunner) Run(ctx context.Context, req RunRequest) (<-chan StreamEvent, error) {
 	ch := make(chan StreamEvent, 64)

@@ -46,16 +46,21 @@ func (c *Client) Connect(ctx context.Context) error {
 	c.conn = conn
 
 	harnessNames := make([]string, 0, len(c.runners))
-	for name := range c.runners {
+	harnessModels := make(map[string][]string, len(c.runners))
+	for name, rh := range c.runners {
 		harnessNames = append(harnessNames, name)
+		if models, err := rh.Runner.Models(ctx); err == nil && len(models) > 0 {
+			harnessModels[name] = models
+		}
 	}
 
 	hs := protocol.Message{
-		Type:      protocol.TypeHandshake,
-		DaemonID:  c.cfg.DaemonID,
-		Token:     c.cfg.DaemonToken,
-		DaemonName: c.cfg.DaemonName,
-		Harnesses: harnessNames,
+		Type:         protocol.TypeHandshake,
+		DaemonID:     c.cfg.DaemonID,
+		Token:        c.cfg.DaemonToken,
+		DaemonName:   c.cfg.DaemonName,
+		Harnesses:    harnessNames,
+		HarnessModels: harnessModels,
 	}
 
 	if err := wsjson.Write(ctx, conn, hs); err != nil {

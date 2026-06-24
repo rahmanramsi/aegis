@@ -15,6 +15,7 @@ func NewCodexRunner(path, model string) *CodexRunner { return &CodexRunner{path:
 
 func (r *CodexRunner) Name() string    { return "codex" }
 func (r *CodexRunner) Available() bool { _, err := exec.LookPath("codex"); return err == nil }
+func (r *CodexRunner) Models(_ context.Context) ([]string, error) { return nil, nil }
 
 func (r *CodexRunner) Run(ctx context.Context, req RunRequest) (<-chan StreamEvent, error) {
 	ch := make(chan StreamEvent, 64)

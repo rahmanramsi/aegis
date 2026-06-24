@@ -8,13 +8,14 @@ import (
 )
 
 type Daemon struct {
-	ID          string  `json:"id"`
-	UserID      string  `json:"user_id"`
-	Name        string  `json:"name"`
-	TokenHash   string  `json:"-"`
-	Status      string  `json:"status"`
-	LastSeen    *string `json:"last_seen"`
-	CreatedAt   string  `json:"created_at"`
+	ID               string  `json:"id"`
+	UserID           string  `json:"user_id"`
+	Name             string  `json:"name"`
+	TokenHash        string  `json:"-"`
+	Status           string  `json:"status"`
+	LastSeen         *string `json:"last_seen"`
+	HarnessModelsJSON string  `json:"-"`
+	CreatedAt        string  `json:"created_at"`
 }
 
 func (s *Store) CreateDaemon(userID, name, tokenHash string) (*Daemon, error) {
@@ -35,8 +36,7 @@ func (s *Store) CreateDaemon(userID, name, tokenHash string) (*Daemon, error) {
 	}
 	return d, nil
 }
-
-func (s *Store) AuthenticateDaemon(daemonID, tokenHash string, harnesses []string) error {
+func (s *Store) AuthenticateDaemon(daemonID, tokenHash string, harnesses []string, modelsJSON string) error {
 	var storedHash string
 	err := s.DB.QueryRow(
 		"SELECT token_hash FROM daemons WHERE id = ?", daemonID,
@@ -50,8 +50,8 @@ func (s *Store) AuthenticateDaemon(daemonID, tokenHash string, harnesses []strin
 
 	now := time.Now().UTC().Format(time.RFC3339)
 	_, err = s.DB.Exec(
-		"UPDATE daemons SET status = 'online', last_seen = ? WHERE id = ?",
-		now, daemonID,
+		"UPDATE daemons SET status = 'online', last_seen = ?, harness_models = ? WHERE id = ?",
+		now, modelsJSON, daemonID,
 	)
 	if err != nil {
 		return err
@@ -75,7 +75,7 @@ func (s *Store) AuthenticateDaemon(daemonID, tokenHash string, harnesses []strin
 
 func (s *Store) ListDaemonsByUser(userID string) ([]Daemon, error) {
 	rows, err := s.DB.Query(
-		"SELECT id, user_id, name, token_hash, status, last_seen, created_at FROM daemons WHERE user_id = ? ORDER BY created_at DESC",
+		"SELECT id, user_id, name, token_hash, status, last_seen, harness_models, created_at FROM daemons WHERE user_id = ? ORDER BY created_at DESC",
 		userID,
 	)
 	if err != nil {
@@ -86,7 +86,7 @@ func (s *Store) ListDaemonsByUser(userID string) ([]Daemon, error) {
 	daemons := make([]Daemon, 0)
 	for rows.Next() {
 		var d Daemon
-		if err := rows.Scan(&d.ID, &d.UserID, &d.Name, &d.TokenHash, &d.Status, &d.LastSeen, &d.CreatedAt); err != nil {
+		if err := rows.Scan(&d.ID, &d.UserID, &d.Name, &d.TokenHash, &d.Status, &d.LastSeen, &d.HarnessModelsJSON, &d.CreatedAt); err != nil {
 			return nil, err
 		}
 		daemons = append(daemons, d)
@@ -97,8 +97,8 @@ func (s *Store) ListDaemonsByUser(userID string) ([]Daemon, error) {
 func (s *Store) GetDaemon(id string) (*Daemon, error) {
 	var d Daemon
 	err := s.DB.QueryRow(
-		"SELECT id, user_id, name, token_hash, status, last_seen, created_at FROM daemons WHERE id = ?", id,
-	).Scan(&d.ID, &d.UserID, &d.Name, &d.TokenHash, &d.Status, &d.LastSeen, &d.CreatedAt)
+		"SELECT id, user_id, name, token_hash, status, last_seen, harness_models, created_at FROM daemons WHERE id = ?", id,
+	).Scan(&d.ID, &d.UserID, &d.Name, &d.TokenHash, &d.Status, &d.LastSeen, &d.HarnessModelsJSON, &d.CreatedAt)
 	if err != nil {
 		return nil, err
 	}

@@ -15,6 +15,7 @@ func NewClaudeRunner(path, model string) *ClaudeRunner { return &ClaudeRunner{pa
 
 func (r *ClaudeRunner) Name() string    { return "claude" }
 func (r *ClaudeRunner) Available() bool { _, err := exec.LookPath("claude"); return err == nil }
+func (r *ClaudeRunner) Models(_ context.Context) ([]string, error) { return nil, nil }
 
 func (r *ClaudeRunner) Run(ctx context.Context, req RunRequest) (<-chan StreamEvent, error) {
 	ch := make(chan StreamEvent, 64)
