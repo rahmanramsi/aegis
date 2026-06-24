@@ -1,6 +1,6 @@
 import type { Workspace, Daemon, DaemonCreateResponse, Agent, AgentCreateResponse, Connection, HealthStatus } from '$lib/types';
 
-const BASE = '/api/v1';
+const BASE = (typeof window !== 'undefined' ? localStorage.getItem('aegis_api_base') : null) || '/api/v1';
 const TOKEN_KEY = 'aegis_api_key';
 
 let _token = '';

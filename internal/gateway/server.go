@@ -1,10 +1,8 @@
 package gateway
 
 import (
-	"io/fs"
 	"net/http"
 	"os"
-	"strings"
 
 	"github.com/rahmanramsi/aegis/internal/gateway/api"
 	"github.com/rahmanramsi/aegis/internal/gateway/msg"
@@ -17,16 +15,14 @@ type Server struct {
 	Hub        *ws.Hub
 	BotManager *msg.BotManager
 	mux        *http.ServeMux
-	staticFS   fs.FS
 }
 
-func NewServer(s *store.Store, hub *ws.Hub, bm *msg.BotManager, staticFS fs.FS) *Server {
+func NewServer(s *store.Store, hub *ws.Hub, bm *msg.BotManager) *Server {
 	server := &Server{
 		Store:      s,
 		Hub:        hub,
 		BotManager: bm,
 		mux:        http.NewServeMux(),
-		staticFS:   staticFS,
 	}
 	server.registerRoutes()
 	return server
@@ -89,27 +85,7 @@ func (s *Server) registerRoutes() {
 	// WebSocket
 	mux.HandleFunc("GET /ws/daemon", s.Hub.ServeHTTP)
 
-	// Static files with SPA fallback — must be last (GET / is catch-all in Go 1.22+)
-	fileServer := http.FileServer(http.FS(s.staticFS))
-	mux.HandleFunc("GET /", func(w http.ResponseWriter, r *http.Request) {
-		path := strings.TrimPrefix(r.URL.Path, "/")
-		if path == "" || path == "index.html" {
-			fileServer.ServeHTTP(w, r)
-			return
-		}
-		// Check if it's a real static file
-		f, err := s.staticFS.Open(path)
-		if err == nil {
-			f.Close()
-			fileServer.ServeHTTP(w, r)
-			return
-		}
-		// SPA fallback — serve index.html
-		r.URL.Path = "/"
-		fileServer.ServeHTTP(w, r)
-	})
-
-	// Wrap with auth middleware, then CORS middleware
+	// Wrap with auth middleware, then CORS
 	authMux := authMiddleware(mux, s.Store)
 	corsMux := corsMiddleware(authMux)
 	s.mux = http.NewServeMux()

@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 
 	_ "github.com/tursodatabase/go-libsql"
 )
@@ -13,11 +14,19 @@ type Store struct {
 	DB *sql.DB
 }
 
-func Open(path string) (*Store, error) {
-	if err := os.MkdirAll(filepath.Dir(path), 0755); err != nil {
-		return nil, fmt.Errorf("create db dir: %w", err)
+// Open opens a database connection. Supports:
+//   - Local file:   Open("./data/gateway.db") or Open("file:/abs/path")
+//   - Turso cloud:  Open("libsql://db-org.turso.io?authToken=...")
+func Open(dsn string) (*Store, error) {
+	if !strings.HasPrefix(dsn, "libsql://") && !strings.HasPrefix(dsn, "file:") {
+		// Local path — create parent dir and add file: prefix
+		if err := os.MkdirAll(filepath.Dir(dsn), 0755); err != nil {
+			return nil, fmt.Errorf("create db dir: %w", err)
+		}
+		dsn = "file:" + dsn
 	}
-	db, err := sql.Open("libsql", "file:"+path)
+
+	db, err := sql.Open("libsql", dsn)
 	if err != nil {
 		return nil, fmt.Errorf("open db: %w", err)
 	}

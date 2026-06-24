@@ -2,14 +2,12 @@ package main
 
 import (
 	"context"
-	"io/fs"
 	"log/slog"
 	"net/http"
 	"os"
 	"os/signal"
 	"syscall"
 
-	aegis "github.com/rahmanramsi/aegis"
 	"github.com/rahmanramsi/aegis/internal/gateway"
 	"github.com/rahmanramsi/aegis/internal/gateway/msg"
 	"github.com/rahmanramsi/aegis/internal/gateway/router"
@@ -20,12 +18,12 @@ import (
 func main() {
 	slog.SetDefault(slog.New(slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{Level: slog.LevelInfo})))
 
-	dbPath := os.Getenv("AEGIS_DB_PATH")
-	if dbPath == "" {
-		dbPath = "./data/gateway.db"
+	dbDSN := os.Getenv("AEGIS_DATABASE_URL")
+	if dbDSN == "" {
+		dbDSN = "./data/gateway.db"
 	}
 
-	s, err := store.Open(dbPath)
+	s, err := store.Open(dbDSN)
 	if err != nil {
 		slog.Error("open database", "err", err)
 		os.Exit(1)
@@ -44,8 +42,7 @@ func main() {
 		r.HandleWithAgent(ctx, m, adapter, agent)
 	})
 
-	staticFS, _ := fs.Sub(aegis.EmbeddedStatic, "static")
-	server := gateway.NewServer(s, hub, bm, staticFS)
+	server := gateway.NewServer(s, hub, bm)
 
 	addr := os.Getenv("AEGIS_ADDR")
 	if addr == "" {
