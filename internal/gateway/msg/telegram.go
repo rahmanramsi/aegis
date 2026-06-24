@@ -78,6 +78,18 @@ func (t *TelegramAdapter) Send(chatID, text string) error {
 	return nil
 }
 
+func (t *TelegramAdapter) SendTyping(chatID string) error {
+	chatIDInt, err := strconv.ParseInt(chatID, 10, 64)
+	if err != nil {
+		return nil
+	}
+	_, err = t.b.SendChatAction(context.Background(), &bot.SendChatActionParams{
+		ChatID: chatIDInt,
+		Action: models.ChatActionTyping,
+	})
+	return err
+}
+
 func (t *TelegramAdapter) Close() error {
 	return nil
 }

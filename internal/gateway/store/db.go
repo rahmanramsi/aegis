@@ -65,6 +65,7 @@ func migrate(db *sql.DB) error {
 	db.Exec("ALTER TABLE agents ADD COLUMN telegram_token_raw TEXT DEFAULT ''")
 	db.Exec("DROP TABLE IF EXISTS sessions_old")
 	db.Exec("ALTER TABLE sessions RENAME TO sessions_old")
+	db.Exec("CREATE TABLE IF NOT EXISTS sessions (id TEXT PRIMARY KEY, agent_id TEXT NOT NULL REFERENCES agents(id) ON DELETE CASCADE, chat_id TEXT NOT NULL, user_name TEXT DEFAULT '', created_at TEXT NOT NULL, updated_at TEXT NOT NULL)")
 	return nil
 }
 

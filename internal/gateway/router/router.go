@@ -18,6 +18,7 @@ type pendingTask struct {
 	chatID    string
 	sessionID string
 	agentID   string
+	stream    msg.StreamSender
 }
 
 type Router struct {
@@ -48,16 +49,15 @@ func (r *Router) onTaskEvent(taskID string, event protocol.Message) {
 	if !ok {
 		return
 	}
-
 	switch event.Type {
 	case protocol.TypeStdout:
-		pt.adapter.Send(pt.chatID, event.Content)
+		pt.stream.Append(event.Content)
 	case protocol.TypeStderr:
-		pt.adapter.Send(pt.chatID, "[stderr] "+event.Content)
+		pt.stream.Append(event.Content)
 	case protocol.TypeDone:
-		pt.adapter.Send(pt.chatID, "[done]")
+		pt.stream.Done()
 	case protocol.TypeError:
-		pt.adapter.Send(pt.chatID, "[error] "+event.Content)
+		pt.stream.Error(event.Content)
 	}
 }
 
@@ -66,6 +66,11 @@ func (r *Router) Handle(ctx context.Context, m msg.Message, adapter msg.Adapter)
 }
 
 func (r *Router) HandleWithAgent(ctx context.Context, m msg.Message, adapter msg.Adapter, agent *store.Agent) {
+	// Show typing indicator while processing
+	if ta, ok := adapter.(interface{ SendTyping(string) error }); ok {
+		ta.SendTyping(m.ChatID)
+	}
+
 	if agent == nil || !agent.Enabled {
 		adapter.Send(m.ChatID, "Agent not found or disabled.")
 		return
@@ -107,6 +112,7 @@ func (r *Router) HandleWithAgent(ctx context.Context, m msg.Message, adapter msg
 		chatID:    m.ChatID,
 		sessionID: session.ID,
 		agentID:   agent.ID,
+		stream:    adapter.SendStream(m.ChatID),
 	}
 	r.mu.Unlock()
 
