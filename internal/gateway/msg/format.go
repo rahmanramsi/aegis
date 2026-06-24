@@ -5,85 +5,69 @@ import (
 	"strings"
 )
 
-// mdv2Escapes matches characters that must be backslash-escaped in Telegram MarkdownV2.
 var mdv2Escapes = regexp.MustCompile(`([_*\[\]()~` + "`" + `>#+\-=|{}.!\\])`)
 
-// FormatTelegramMarkdown converts standard Markdown to Telegram MarkdownV2 format.
-// Similar to Hermes' format_message().
+// FormatTelegramMarkdown converts standard Markdown to Telegram MarkdownV2.
 func FormatTelegramMarkdown(text string) string {
-	// 0) Convert GFM pipe tables to bullet groups (MarkdownV2 has no table syntax)
-	text = wrapMarkdownTables(text)
+	// 0) Protect code blocks from escaping
+	protected := protectBlocks(text)
 
-	// 1) Protect fenced code blocks and inline code from escaping
-	text = protectCodeBlocks(text)
+	// 1) Convert GFM pipe tables to bullet groups
+	protected = wrapMarkdownTables(protected)
 
 	// 2) Convert bold: **text** → *text*
-	text = reBold.ReplaceAllStringFunc(text, func(m string) string {
-		inner := m[2 : len(m)-2]
-		return "*" + escapeMDV2(inner) + "*"
+	protected = reBold.ReplaceAllStringFunc(protected, func(m string) string {
+		return "*" + escapeMDV2(m[2:len(m)-2]) + "*"
 	})
 
-	// 3) Convert italic: *text* → _text_
-	text = reItalic.ReplaceAllStringFunc(text, func(m string) string {
-		inner := m[1 : len(m)-1]
-		return "_" + escapeMDV2(inner) + "_"
-	})
-
-	// 4) Convert markdown links [text](url) → [text](url) with escaped display
-	text = reLink.ReplaceAllStringFunc(text, func(m string) string {
+	// 3) Convert links [text](url) → escaped display + clean URL
+	protected = reLink.ReplaceAllStringFunc(protected, func(m string) string {
 		parts := reLink.FindStringSubmatch(m)
-		display := escapeMDV2(parts[1])
-		url := escapeMDV2URL(parts[2])
-		return "[" + display + "](" + url + ")"
+		return "[" + escapeMDV2(parts[1]) + "](" + escapeMDV2URL(parts[2]) + ")"
 	})
 
-	// 5) Escape remaining special characters (outside protected blocks)
-	text = restoreCodeBlocks(text)
-
-	return text
+	// 4) Escape remaining special chars, then restore protected blocks
+	result := escapeMDV2(protected)
+	result = restoreBlocks(result)
+	return result
 }
 
-var (
-	reBold   = regexp.MustCompile(`\*\*(.+?)\*\*`)
-	reItalic = regexp.MustCompile(`(?<!\*)\*(?!\*)(.+?)(?<!\*)\*(?!\*)`)
-	reLink   = regexp.MustCompile(`\[([^\]]+)\]\(([^)]+)\)`)
-)
+var reBold = regexp.MustCompile(`\*\*(.+?)\*\*`)
+var reLink = regexp.MustCompile(`\[([^\]]+)\]\(([^)]+)\)`)
+var reFenced = regexp.MustCompile("(?s)```.*?```")
+var reInlineCode = regexp.MustCompile("`[^`\n]+`")
 
-// Code block protection to prevent escaping inside code
-var codeBlockID int
+var blockStore []string
 
-func protectCodeBlocks(text string) string {
-	codeBlockID = 0
-	// Fenced code blocks: ```...```
+func protectBlocks(text string) string {
+	blockStore = nil
 	text = reFenced.ReplaceAllStringFunc(text, func(m string) string {
-		id := codeBlockID
-		codeBlockID++
-		return placeholder(id)
+		blockStore = append(blockStore, m)
+		return "\x00FENCE" + itoa(len(blockStore)-1) + "\x00"
 	})
-	// Inline code: `...`
 	text = reInlineCode.ReplaceAllStringFunc(text, func(m string) string {
-		id := codeBlockID
-		codeBlockID++
-		return placeholder(id)
+		blockStore = append(blockStore, m)
+		return "\x00CODE" + itoa(len(blockStore)-1) + "\x00"
 	})
 	return text
 }
 
-func restoreCodeBlocks(text string) string {
-	for i := 0; i < codeBlockID; i++ {
-		text = strings.Replace(text, placeholder(i), codeBlocks[i], 1)
+func restoreBlocks(text string) string {
+	for i := len(blockStore) - 1; i >= 0; i-- {
+		text = strings.ReplaceAll(text, "\x00FENCE"+itoa(i)+"\x00", blockStore[i])
+		text = strings.ReplaceAll(text, "\x00CODE"+itoa(i)+"\x00", blockStore[i])
 	}
 	return text
 }
 
-var (
-	reFenced     = regexp.MustCompile("```[\\s\\S]*?```")
-	reInlineCode = regexp.MustCompile("`[^`\n]+`")
-	codeBlocks   []string
-)
+func escapeMDV2(s string) string {
+	return mdv2Escapes.ReplaceAllString(s, `\$1`)
+}
 
-func placeholder(id int) string {
-	return "\x00CODE" + itoa(id) + "\x00"
+func escapeMDV2URL(s string) string {
+	s = strings.ReplaceAll(s, `\`, `\\`)
+	s = strings.ReplaceAll(s, `)`, `\)`)
+	return s
 }
 
 func itoa(n int) string {
@@ -98,86 +82,55 @@ func itoa(n int) string {
 	return s
 }
 
-func escapeMDV2(s string) string {
-	return mdv2Escapes.ReplaceAllString(s, `\$1`)
-}
+// ---- Table handling ----
 
-func escapeMDV2URL(s string) string {
-	// Only ) and \ need escaping inside URL
-	s = strings.ReplaceAll(s, `\`, `\\`)
-	s = strings.ReplaceAll(s, `)`, `\)`)
-	return s
-}
+var reTableSep = regexp.MustCompile(`^\s*\|?\s*:?-+:?\s*(?:\|\s*:?-+:?\s*)+`)
+var reTableData = regexp.MustCompile(`^\s*\|.+\|\s*$`)
 
-// wrapMarkdownTables converts GFM pipe tables to Telegram-friendly bullet groups.
-// Telegram MarkdownV2 has no table syntax.
 func wrapMarkdownTables(text string) string {
 	lines := strings.Split(text, "\n")
 	var out []string
 	i := 0
 	for i < len(lines) {
-		line := lines[i]
-		if isTableDelimiter(line) && i > 0 && i+1 < len(lines) {
-			// Found a table: header at i-1, delimiter at i, data rows follow
-			header := lines[i-1]
-			headers := splitTableRow(header)
-			// Remove the header line from output
-			if len(out) > 0 {
-				out = out[:len(out)-1]
-			}
-			// Collect data rows
-			var dataRows [][]string
+		if reTableSep.MatchString(lines[i]) && i > 0 {
+			headers := splitCells(lines[i-1])
+			out = out[:len(out)-1] // remove header line
 			j := i + 1
-			for j < len(lines) && isTableRow(lines[j]) {
-				dataRows = append(dataRows, splitTableRow(lines[j]))
+			var rows [][]string
+			for j < len(lines) && reTableData.MatchString(lines[j]) {
+				rows = append(rows, splitCells(lines[j]))
 				j++
 			}
-			// Render as bullet groups
-			out = append(out, renderTableAsBullets(headers, dataRows))
+			out = append(out, renderTable(headers, rows))
 			i = j
 			continue
 		}
-		out = append(out, line)
+		out = append(out, lines[i])
 		i++
 	}
 	return strings.Join(out, "\n")
 }
 
-func isTableDelimiter(line string) bool {
-	trimmed := strings.TrimSpace(line)
-	if !strings.Contains(trimmed, "|") {
-		return false
-	}
-	// Must contain only |, -, :, spaces
-	for _, c := range trimmed {
-		if c != '|' && c != '-' && c != ':' && c != ' ' {
-			return false
-		}
-	}
-	return strings.Contains(trimmed, "-")
-}
-
-func isTableRow(line string) bool {
-	trimmed := strings.TrimSpace(line)
-	return trimmed != "" && strings.Contains(trimmed, "|")
-}
-
-func splitTableRow(line string) []string {
-	trimmed := strings.Trim(line, "| ")
+func splitCells(line string) []string {
+	line = strings.Trim(line, "| \t")
 	var cells []string
-	for _, cell := range strings.Split(trimmed, "|") {
-		cells = append(cells, strings.TrimSpace(cell))
+	for _, c := range strings.Split(line, "|") {
+		cells = append(cells, strings.TrimSpace(c))
 	}
 	return cells
 }
 
-func renderTableAsBullets(headers []string, rows [][]string) string {
+func renderTable(headers []string, rows [][]string) string {
 	var out []string
 	for _, row := range rows {
+		var parts []string
 		for h := 0; h < len(headers) && h < len(row); h++ {
 			if row[h] != "" && row[h] != "-" {
-				out = append(out, "*"+escapeMDV2(headers[h])+"*: "+row[h])
+				parts = append(parts, "*"+headers[h]+"*: "+row[h])
 			}
+		}
+		if len(parts) > 0 {
+			out = append(out, strings.Join(parts, "\n"))
 		}
 	}
 	return strings.Join(out, "\n")
