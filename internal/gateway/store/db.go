@@ -38,14 +38,10 @@ func Open(dsn string) (*Store, error) {
 }
 
 func migrate(db *sql.DB) error {
-	// Schema evolution (ignored if columns already exist)
-	db.Exec("ALTER TABLE daemons ADD COLUMN user_id TEXT DEFAULT ''")
-	db.Exec("ALTER TABLE daemons ADD COLUMN harness_models TEXT DEFAULT ''")
-	db.Exec("ALTER TABLE users ADD COLUMN api_key_raw TEXT DEFAULT ''")
-	db.Exec("ALTER TABLE agents ADD COLUMN telegram_token_raw TEXT DEFAULT ''")
 	if _, err := db.Exec("PRAGMA foreign_keys = ON"); err != nil {
 		return fmt.Errorf("enable foreign keys: %w", err)
 	}
+
 	stmts := []string{
 		`CREATE TABLE IF NOT EXISTS workspaces (id TEXT PRIMARY KEY, name TEXT NOT NULL, slug TEXT NOT NULL UNIQUE, created_at TEXT NOT NULL)`,
 		`CREATE TABLE IF NOT EXISTS users (id TEXT PRIMARY KEY, email TEXT NOT NULL UNIQUE, password_hash TEXT NOT NULL, api_key_hash TEXT NOT NULL, created_at TEXT NOT NULL)`,
@@ -61,6 +57,14 @@ func migrate(db *sql.DB) error {
 			return fmt.Errorf("migrate: %w\nSQL: %s", err, stmt)
 		}
 	}
+
+	// Schema evolution for existing databases — ignore errors if columns already exist
+	db.Exec("ALTER TABLE daemons ADD COLUMN user_id TEXT DEFAULT ''")
+	db.Exec("ALTER TABLE daemons ADD COLUMN harness_models TEXT DEFAULT ''")
+	db.Exec("ALTER TABLE users ADD COLUMN api_key_raw TEXT DEFAULT ''")
+	db.Exec("ALTER TABLE agents ADD COLUMN telegram_token_raw TEXT DEFAULT ''")
+	db.Exec("DROP TABLE IF EXISTS sessions_old")
+	db.Exec("ALTER TABLE sessions RENAME TO sessions_old")
 	return nil
 }
 
