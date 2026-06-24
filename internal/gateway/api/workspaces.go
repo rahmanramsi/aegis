@@ -121,6 +121,21 @@ func (h *WorkspaceHandler) Delete(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusNoContent)
 }
 
+func (h *WorkspaceHandler) GenerateEnrollmentKey(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+	id := chi.URLParam(r, "id")
+	if !h.checkAccess(r, id, w) {
+		return
+	}
+	key, err := h.Store.GenerateEnrollmentKey(id)
+	if err != nil {
+		slog.Error("generate enrollment key", "err", err)
+		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "internal error"})
+		return
+	}
+	json.NewEncoder(w).Encode(map[string]string{"enrollment_key": key})
+}
+
 // checkAccess verifies the authenticated user is a member of the workspace.
 // Admin key users (no user context) always pass.
 func (h *WorkspaceHandler) checkAccess(r *http.Request, workspaceID string, w http.ResponseWriter) bool {

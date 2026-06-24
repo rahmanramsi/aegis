@@ -9,8 +9,8 @@ import (
 	"strings"
 	"syscall"
 
-	"github.com/rahmanramsi/aegis/internal/daemon"
 	"github.com/rahmanramsi/aegis/internal/config"
+	"github.com/rahmanramsi/aegis/internal/daemon"
 	"github.com/rahmanramsi/aegis/internal/daemon/harness"
 )
 
@@ -41,11 +41,38 @@ func main() {
 		slog.Warn("no harnesses discovered")
 	}
 
-	client := daemon.NewClient(cfg, reg)
-
 	ctx, cancel := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer cancel()
 
+	// Auto-enroll with workspace key
+	if cfg.WorkspaceKey != "" {
+		client := daemon.NewClient(cfg, reg)
+		state, err := client.Enroll(ctx)
+		if err != nil {
+			slog.Error("enroll failed", "err", err)
+			os.Exit(1)
+		}
+		if err := daemon.SaveState(state); err != nil {
+			slog.Error("save state", "err", err)
+		}
+		cfg.DaemonID = state.DaemonID
+		cfg.DaemonToken = state.Token
+		slog.Info("daemon enrolled", "id", state.DaemonID)
+	}
+
+	// Load saved state if no env override
+	if cfg.DaemonID == "" {
+		if state, err := daemon.LoadState(); err == nil {
+			cfg.DaemonID = state.DaemonID
+			cfg.DaemonToken = state.Token
+			slog.Info("loaded saved state", "id", state.DaemonID)
+		} else {
+			slog.Error("no daemon ID — set AEGIS_WORKSPACE_KEY to enroll, or AEGIS_DAEMON_ID/AEGIS_DAEMON_TOKEN to reconnect")
+			os.Exit(1)
+		}
+	}
+
+	client := daemon.NewClient(cfg, reg)
 	if err := client.Run(ctx); err != nil {
 		slog.Error("run", "err", err)
 	}

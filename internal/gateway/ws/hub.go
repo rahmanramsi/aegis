@@ -2,6 +2,7 @@ package ws
 
 import (
 	"context"
+	"crypto/rand"
 	"crypto/sha256"
 	"encoding/hex"
 	"fmt"
@@ -56,9 +57,45 @@ func (h *Hub) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		conn.Close(websocket.StatusPolicyViolation, "expected handshake")
 		return
 	}
-
-	if msg.Type != protocol.TypeHandshake {
-		conn.Close(websocket.StatusPolicyViolation, "expected handshake")
+	switch msg.Type {
+	case protocol.TypeHandshake:
+		tokenHash := sha256Hex(msg.Token)
+		if err := h.Store.AuthenticateDaemon(msg.DaemonID, tokenHash, msg.Harnesses); err != nil {
+			slog.Error("auth daemon", "err", err)
+			wsjson.Write(ctx, conn, protocol.Message{Type: protocol.TypeError, Content: err.Error()})
+			conn.Close(websocket.StatusPolicyViolation, "auth failed")
+			return
+		}
+	case protocol.TypeEnroll:
+		keyHash := sha256Hex(msg.WorkspaceKey)
+		ws, err := h.Store.GetWorkspaceByEnrollmentKey(keyHash)
+		if err != nil {
+			slog.Error("enroll: invalid key", "err", err)
+			wsjson.Write(ctx, conn, protocol.Message{Type: protocol.TypeError, Content: "invalid workspace key"})
+			conn.Close(websocket.StatusPolicyViolation, "invalid key")
+			return
+		}
+		name := msg.DaemonName
+		if name == "" {
+			name = "auto"
+		}
+		daemonToken := generateToken()
+		d, err := h.Store.CreateDaemon(ws.ID, name, sha256Hex(daemonToken))
+		if err != nil {
+			slog.Error("enroll: create daemon", "err", err)
+			conn.Close(websocket.StatusInternalError, "failed to create daemon")
+			return
+		}
+		h.Store.AuthenticateDaemon(d.ID, sha256Hex(daemonToken), msg.Harnesses)
+		wsjson.Write(ctx, conn, protocol.Message{
+			Type:          protocol.TypeEnrolled,
+			EnrolledID:    d.ID,
+			EnrolledToken: daemonToken,
+		})
+		msg.DaemonID = d.ID
+		msg.Harnesses = msg.Harnesses
+	default:
+		conn.Close(websocket.StatusPolicyViolation, "expected handshake or enroll")
 		return
 	}
 
@@ -110,4 +147,10 @@ func (h *Hub) removeDaemon(id string) {
 func sha256Hex(s string) string {
 	h := sha256.Sum256([]byte(s))
 	return hex.EncodeToString(h[:])
+}
+
+func generateToken() string {
+	b := make([]byte, 32)
+	rand.Read(b)
+	return hex.EncodeToString(b)
 }

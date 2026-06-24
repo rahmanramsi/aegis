@@ -22,6 +22,7 @@ type Config struct {
 	DaemonID       string        `env:"AEGIS_DAEMON_ID"`
 	DaemonName     string        `env:"AEGIS_DAEMON_NAME" envDefault:"aegis-agent"`
 	DaemonToken    string        `env:"AEGIS_DAEMON_TOKEN"`
+	WorkspaceKey   string        `env:"AEGIS_WORKSPACE_KEY"`
 	GatewayURL     string        `env:"AEGIS_GATEWAY_URL" envDefault:"ws://localhost:8080/ws/daemon"`
 	WorkspacesRoot string        `env:"AEGIS_WORKSPACES_ROOT" envDefault:"./workspaces"`
 	MaxConcurrent  int           `env:"AEGIS_MAX_CONCURRENT" envDefault:"5"`

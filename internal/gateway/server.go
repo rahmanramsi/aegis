@@ -67,6 +67,7 @@ func (s *Server) registerRoutes() {
 
 			dh := &api.DaemonHandler{Store: s.Store}
 			r.Get("/workspaces/{wid}/daemons", dh.List)
+			r.Post("/workspaces/{id}/enrollment-key", wh.GenerateEnrollmentKey)
 			r.Post("/workspaces/{wid}/daemons", dh.Create)
 			r.Get("/daemons/{id}", dh.Get)
 			r.Delete("/daemons/{id}", dh.Delete)

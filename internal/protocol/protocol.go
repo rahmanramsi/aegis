@@ -7,6 +7,8 @@ type MessageType string
 const (
 	TypeHandshake   MessageType = "handshake"
 	TypeHandshakeOK MessageType = "handshake_ok"
+	TypeEnroll      MessageType = "enroll"
+	TypeEnrolled    MessageType = "enrolled"
 	TypeStdout      MessageType = "stdout"
 	TypeStderr      MessageType = "stderr"
 	TypeDone        MessageType = "done"
@@ -24,6 +26,14 @@ type Message struct {
 	Token     string   `json:"token,omitempty"`
 	Harnesses []string `json:"harnesses,omitempty"`
 
+	// Enroll (daemon → gateway)
+	WorkspaceKey string `json:"workspace_key,omitempty"`
+	DaemonName   string `json:"daemon_name,omitempty"`
+
+	// Enrolled (gateway → daemon)
+	EnrolledID    string `json:"enrolled_id,omitempty"`
+	EnrolledToken string `json:"enrolled_token,omitempty"`
+
 	// Task (gateway → daemon)
 	Harness   string   `json:"harness,omitempty"`
 	Prompt    string   `json:"prompt,omitempty"`
@@ -31,12 +41,8 @@ type Message struct {
 	ExtraArgs []string `json:"extra_args,omitempty"`
 }
 
-func (m Message) Encode() ([]byte, error) {
-	return json.Marshal(m)
-}
-
+func (m Message) Encode() ([]byte, error) { return json.Marshal(m) }
 func DecodeMessage(data []byte) (Message, error) {
 	var m Message
-	err := json.Unmarshal(data, &m)
-	return m, err
+	return m, json.Unmarshal(data, &m)
 }
