@@ -93,7 +93,7 @@
 							{/if}
 						</Button>
 					</div>
-					<p class="text-xs text-emerald-600">Add this token to AEGIS_TELEGRAM_TOKENS env and restart the gateway.</p>
+					<p class="text-xs text-emerald-500">Save this token — it won&apos;t be shown again.</p>
 				</div>
 			{/if}
 			<Button class="w-full" onclick={done}>Go to agents</Button>
