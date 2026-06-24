@@ -59,7 +59,7 @@
 					<Label for="email">Email</Label>
 					<Input
 						id="email"
-						type="email"
+						type="text"
 						placeholder="you@example.com"
 						bind:value={email}
 						required

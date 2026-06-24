@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"log/slog"
 	"net/http"
+	"strings"
 
 	"github.com/rahmanramsi/aegis/internal/gateway/store"
 )
@@ -32,6 +33,10 @@ func (h *AuthHandler) Register(w http.ResponseWriter, r *http.Request) {
 	}
 	if in.Email == "" || in.Password == "" {
 		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "email and password required"})
+		return
+	}
+	if !strings.Contains(in.Email, "@") {
+		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "invalid email address"})
 		return
 	}
 	if len(in.Password) < 6 {

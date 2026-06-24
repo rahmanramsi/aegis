@@ -117,7 +117,7 @@
 							<Label for="email">Email</Label>
 							<Input
 								id="email"
-								type="email"
+								type="text"
 								bind:value={email}
 								placeholder="you@example.com"
 								required
