@@ -9,5 +9,3 @@ import (
 func UserFromContext(r *http.Request) *store.User {
 	return store.UserFromContext(r.Context())
 }
-
-

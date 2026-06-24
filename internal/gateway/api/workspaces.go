@@ -5,6 +5,8 @@ import (
 	"log/slog"
 	"net/http"
 
+	"github.com/go-chi/chi/v5"
+
 	"github.com/rahmanramsi/aegis/internal/gateway/store"
 )
 
@@ -69,7 +71,7 @@ func (h *WorkspaceHandler) Create(w http.ResponseWriter, r *http.Request) {
 
 func (h *WorkspaceHandler) Get(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
-	id := r.PathValue("id")
+	id := chi.URLParam(r, "id")
 
 	if !h.checkAccess(r, id, w) {
 		return
@@ -85,7 +87,7 @@ func (h *WorkspaceHandler) Get(w http.ResponseWriter, r *http.Request) {
 
 func (h *WorkspaceHandler) Update(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
-	id := r.PathValue("id")
+	id := chi.URLParam(r, "id")
 
 	if !h.checkAccess(r, id, w) {
 		return
@@ -106,7 +108,7 @@ func (h *WorkspaceHandler) Update(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *WorkspaceHandler) Delete(w http.ResponseWriter, r *http.Request) {
-	id := r.PathValue("id")
+	id := chi.URLParam(r, "id")
 
 	if !h.checkAccess(r, id, w) {
 		return

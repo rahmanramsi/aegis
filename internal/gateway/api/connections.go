@@ -5,6 +5,8 @@ import (
 	"log/slog"
 	"net/http"
 
+	"github.com/go-chi/chi/v5"
+
 	"github.com/rahmanramsi/aegis/internal/gateway/store"
 )
 
@@ -19,7 +21,7 @@ type createConnectionInput struct {
 
 func (h *ConnectionHandler) List(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
-	aid := r.PathValue("aid")
+	aid := chi.URLParam(r, "aid")
 	connections, err := h.Store.ListConnections(aid)
 	if err != nil {
 		slog.Error("list connections", "err", err)
@@ -31,7 +33,7 @@ func (h *ConnectionHandler) List(w http.ResponseWriter, r *http.Request) {
 
 func (h *ConnectionHandler) Create(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
-	aid := r.PathValue("aid")
+	aid := chi.URLParam(r, "aid")
 
 	var in createConnectionInput
 	if err := json.NewDecoder(r.Body).Decode(&in); err != nil {
@@ -51,7 +53,7 @@ func (h *ConnectionHandler) Create(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *ConnectionHandler) Delete(w http.ResponseWriter, r *http.Request) {
-	id := r.PathValue("id")
+	id := chi.URLParam(r, "id")
 	if err := h.Store.DeleteConnection(id); err != nil {
 		writeJSON(w, http.StatusNotFound, map[string]string{"error": "not found"})
 		return

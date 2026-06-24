@@ -8,6 +8,8 @@ import (
 	"log/slog"
 	"net/http"
 
+	"github.com/go-chi/chi/v5"
+
 	"github.com/rahmanramsi/aegis/internal/gateway/store"
 )
 
@@ -31,7 +33,7 @@ type daemonWithHarnesses struct {
 
 func (h *DaemonHandler) List(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
-	wid := r.PathValue("wid")
+	wid := chi.URLParam(r, "wid")
 	daemons, err := h.Store.ListDaemonsByWorkspace(wid)
 	if err != nil {
 		slog.Error("list daemons", "err", err)
@@ -48,7 +50,7 @@ func (h *DaemonHandler) List(w http.ResponseWriter, r *http.Request) {
 
 func (h *DaemonHandler) Create(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
-	wid := r.PathValue("wid")
+	wid := chi.URLParam(r, "wid")
 
 	var in createDaemonInput
 	if err := json.NewDecoder(r.Body).Decode(&in); err != nil {
@@ -84,7 +86,7 @@ func (h *DaemonHandler) Create(w http.ResponseWriter, r *http.Request) {
 
 func (h *DaemonHandler) Get(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
-	id := r.PathValue("id")
+	id := chi.URLParam(r, "id")
 
 	d, err := h.Store.GetDaemon(id)
 	if err != nil {
@@ -105,7 +107,7 @@ func (h *DaemonHandler) Get(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *DaemonHandler) Delete(w http.ResponseWriter, r *http.Request) {
-	id := r.PathValue("id")
+	id := chi.URLParam(r, "id")
 	if err := h.Store.DeleteDaemon(id); err != nil {
 		writeJSON(w, http.StatusNotFound, map[string]string{"error": "not found"})
 		return

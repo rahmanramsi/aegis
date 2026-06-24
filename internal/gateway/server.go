@@ -4,6 +4,10 @@ import (
 	"net/http"
 	"os"
 
+	"github.com/go-chi/chi/v5"
+	"github.com/go-chi/chi/v5/middleware"
+	"github.com/go-chi/cors"
+
 	"github.com/rahmanramsi/aegis/internal/gateway/api"
 	"github.com/rahmanramsi/aegis/internal/gateway/msg"
 	"github.com/rahmanramsi/aegis/internal/gateway/store"
@@ -14,7 +18,7 @@ type Server struct {
 	Store      *store.Store
 	Hub        *ws.Hub
 	BotManager *msg.BotManager
-	mux        *http.ServeMux
+	router     chi.Router
 }
 
 func NewServer(s *store.Store, hub *ws.Hub, bm *msg.BotManager) *Server {
@@ -22,89 +26,90 @@ func NewServer(s *store.Store, hub *ws.Hub, bm *msg.BotManager) *Server {
 		Store:      s,
 		Hub:        hub,
 		BotManager: bm,
-		mux:        http.NewServeMux(),
 	}
 	server.registerRoutes()
 	return server
 }
 
 func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	s.mux.ServeHTTP(w, r)
+	s.router.ServeHTTP(w, r)
 }
 
 func (s *Server) registerRoutes() {
-	wh := &api.WorkspaceHandler{Store: s.Store}
-	dh := &api.DaemonHandler{Store: s.Store}
-	ah := &api.AgentHandler{Store: s.Store, BotManager: s.BotManager}
-	ch := &api.ConnectionHandler{Store: s.Store}
-	sh := &api.SessionHandler{Store: s.Store}
+	r := chi.NewRouter()
 
-	mux := s.mux
+	// Global middleware
+	r.Use(middleware.Logger)
+	r.Use(middleware.Recoverer)
+	r.Use(middleware.RequestID)
+	r.Use(s.corsMiddleware())
 
-	// Auth (public)
-	authH := &api.AuthHandler{Store: s.Store}
-	mux.HandleFunc("POST /api/v1/auth/register", authH.Register)
-	mux.HandleFunc("POST /api/v1/auth/login", authH.Login)
-	mux.HandleFunc("GET /api/v1/auth/me", authH.Me)
+	// Public routes
+	r.Route("/api/v1", func(r chi.Router) {
+		r.Get("/health", healthHandler)
 
-	// Health
-	mux.HandleFunc("GET /api/v1/health", func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Content-Type", "application/json")
-		w.Write([]byte(`{"status":"ok"}`))
+		authH := &api.AuthHandler{Store: s.Store}
+		r.Post("/auth/register", authH.Register)
+		r.Post("/auth/login", authH.Login)
+
+		// Protected routes
+		r.Group(func(r chi.Router) {
+			r.Use(authMiddleware(s.Store))
+
+			r.Get("/auth/me", authH.Me)
+
+			wh := &api.WorkspaceHandler{Store: s.Store}
+			r.Get("/workspaces", wh.List)
+			r.Post("/workspaces", wh.Create)
+			r.Get("/workspaces/{id}", wh.Get)
+			r.Put("/workspaces/{id}", wh.Update)
+			r.Delete("/workspaces/{id}", wh.Delete)
+
+			dh := &api.DaemonHandler{Store: s.Store}
+			r.Get("/workspaces/{wid}/daemons", dh.List)
+			r.Post("/workspaces/{wid}/daemons", dh.Create)
+			r.Get("/daemons/{id}", dh.Get)
+			r.Delete("/daemons/{id}", dh.Delete)
+
+			ah := &api.AgentHandler{Store: s.Store, BotManager: s.BotManager}
+			r.Get("/workspaces/{wid}/agents", ah.List)
+			r.Post("/workspaces/{wid}/agents", ah.Create)
+			r.Get("/agents/{id}", ah.Get)
+			r.Put("/agents/{id}", ah.Update)
+			r.Delete("/agents/{id}", ah.Delete)
+
+			ch := &api.ConnectionHandler{Store: s.Store}
+			r.Get("/agents/{aid}/connections", ch.List)
+			r.Post("/agents/{aid}/connections", ch.Create)
+			r.Delete("/connections/{id}", ch.Delete)
+
+			sh := &api.SessionHandler{Store: s.Store}
+			r.Get("/connections/{cid}/sessions", sh.List)
+			r.Get("/sessions/{id}/messages", sh.ListMessages)
+		})
 	})
 
-	// Workspaces
-	mux.HandleFunc("GET /api/v1/workspaces", wh.List)
-	mux.HandleFunc("POST /api/v1/workspaces", wh.Create)
-	mux.HandleFunc("GET /api/v1/workspaces/{id}", wh.Get)
-	mux.HandleFunc("PUT /api/v1/workspaces/{id}", wh.Update)
-	mux.HandleFunc("DELETE /api/v1/workspaces/{id}", wh.Delete)
-
-	// Daemons
-	mux.HandleFunc("GET /api/v1/workspaces/{wid}/daemons", dh.List)
-	mux.HandleFunc("POST /api/v1/workspaces/{wid}/daemons", dh.Create)
-	mux.HandleFunc("GET /api/v1/daemons/{id}", dh.Get)
-	mux.HandleFunc("DELETE /api/v1/daemons/{id}", dh.Delete)
-
-	// Agents
-	mux.HandleFunc("GET /api/v1/workspaces/{wid}/agents", ah.List)
-	mux.HandleFunc("POST /api/v1/workspaces/{wid}/agents", ah.Create)
-	mux.HandleFunc("GET /api/v1/agents/{id}", ah.Get)
-	mux.HandleFunc("PUT /api/v1/agents/{id}", ah.Update)
-	mux.HandleFunc("DELETE /api/v1/agents/{id}", ah.Delete)
-
-	// Connections
-	mux.HandleFunc("GET /api/v1/agents/{aid}/connections", ch.List)
-	mux.HandleFunc("POST /api/v1/agents/{aid}/connections", ch.Create)
-	mux.HandleFunc("DELETE /api/v1/connections/{id}", ch.Delete)
-
-	// Sessions
-	mux.HandleFunc("GET /api/v1/connections/{cid}/sessions", sh.List)
-	mux.HandleFunc("GET /api/v1/sessions/{id}/messages", sh.ListMessages)
-
 	// WebSocket
-	mux.HandleFunc("GET /ws/daemon", s.Hub.ServeHTTP)
+	r.Get("/ws/daemon", s.Hub.ServeHTTP)
 
-	// Wrap with auth middleware, then CORS
-	authMux := authMiddleware(mux, s.Store)
-	corsMux := corsMiddleware(authMux)
-	s.mux = http.NewServeMux()
-	s.mux.Handle("/", corsMux)
+	s.router = r
 }
 
-func corsMiddleware(next http.Handler) http.Handler {
+func (s *Server) corsMiddleware() func(http.Handler) http.Handler {
 	origin := "*"
 	if os.Getenv("AEGIS_ENV") == "production" {
 		origin = os.Getenv("AEGIS_BASE_URL")
 	}
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Access-Control-Allow-Origin", origin)
-		w.Header().Set("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS")
-		w.Header().Set("Access-Control-Allow-Headers", "Content-Type, Authorization")
-		if r.Method == "OPTIONS" {
-			w.WriteHeader(http.StatusNoContent)
-			return
-		}
-		next.ServeHTTP(w, r)
+	return cors.Handler(cors.Options{
+		AllowedOrigins:   []string{origin},
+		AllowedMethods:   []string{"GET", "POST", "PUT", "DELETE", "OPTIONS"},
+		AllowedHeaders:   []string{"Content-Type", "Authorization"},
+		AllowCredentials: true,
+		MaxAge:           300,
 	})
+}
+
+func healthHandler(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+	w.Write([]byte(`{"status":"ok"}`))
 }

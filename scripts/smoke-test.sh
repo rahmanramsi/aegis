@@ -22,7 +22,7 @@ go build -o "$GATEWAY" ./cmd/aegisd
 go build -o "$AGENT_BIN" ./cmd/aegis-agent
 
 echo "=== Starting gateway ==="
-AEGIS_DB_PATH="$DB_PATH" AEGIS_ADDR=":$PORT" "$GATEWAY" &
+AEGIS_DATABASE_URL="$DB_PATH" AEGIS_ADDR=":$PORT" "$GATEWAY" &
 sleep 2
 
 FAIL=0

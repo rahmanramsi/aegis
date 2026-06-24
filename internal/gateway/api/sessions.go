@@ -4,6 +4,8 @@ import (
 	"encoding/json"
 	"log/slog"
 	"net/http"
+
+	"github.com/go-chi/chi/v5"
 	"strconv"
 
 	"github.com/rahmanramsi/aegis/internal/gateway/store"
@@ -15,7 +17,7 @@ type SessionHandler struct {
 
 func (h *SessionHandler) List(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
-	cid := r.PathValue("cid")
+	cid := chi.URLParam(r, "cid")
 	sessions, err := h.Store.ListSessions(cid)
 	if err != nil {
 		slog.Error("list sessions", "err", err)
@@ -27,7 +29,7 @@ func (h *SessionHandler) List(w http.ResponseWriter, r *http.Request) {
 
 func (h *SessionHandler) ListMessages(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
-	id := r.PathValue("id")
+	id := chi.URLParam(r, "id")
 
 	limit := 50
 	offset := 0

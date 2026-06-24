@@ -6,6 +6,8 @@ import (
 	"log/slog"
 	"net/http"
 
+	"github.com/go-chi/chi/v5"
+
 	"github.com/rahmanramsi/aegis/internal/gateway/store"
 )
 
@@ -39,7 +41,7 @@ type updateAgentInput struct {
 
 func (h *AgentHandler) List(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
-	wid := r.PathValue("wid")
+	wid := chi.URLParam(r, "wid")
 	agents, err := h.Store.ListAgents(wid)
 	if err != nil {
 		slog.Error("list agents", "err", err)
@@ -51,7 +53,7 @@ func (h *AgentHandler) List(w http.ResponseWriter, r *http.Request) {
 
 func (h *AgentHandler) Create(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
-	wid := r.PathValue("wid")
+	wid := chi.URLParam(r, "wid")
 
 	var in createAgentInput
 	if err := json.NewDecoder(r.Body).Decode(&in); err != nil {
@@ -122,7 +124,7 @@ func (h *AgentHandler) Create(w http.ResponseWriter, r *http.Request) {
 
 func (h *AgentHandler) Get(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
-	id := r.PathValue("id")
+	id := chi.URLParam(r, "id")
 	agent, err := h.Store.GetAgent(id)
 	if err != nil {
 		writeJSON(w, http.StatusNotFound, map[string]string{"error": "not found"})
@@ -133,7 +135,7 @@ func (h *AgentHandler) Get(w http.ResponseWriter, r *http.Request) {
 
 func (h *AgentHandler) Update(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
-	id := r.PathValue("id")
+	id := chi.URLParam(r, "id")
 
 	var in updateAgentInput
 	if err := json.NewDecoder(r.Body).Decode(&in); err != nil {
@@ -184,7 +186,7 @@ func (h *AgentHandler) Update(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *AgentHandler) Delete(w http.ResponseWriter, r *http.Request) {
-	id := r.PathValue("id")
+	id := chi.URLParam(r, "id")
 
 	agent, err := h.Store.GetAgent(id)
 	if err == nil && agent.TelegramTokenHash != "" && h.BotManager != nil {

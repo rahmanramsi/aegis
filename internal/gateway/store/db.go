@@ -38,6 +38,9 @@ func Open(dsn string) (*Store, error) {
 }
 
 func migrate(db *sql.DB) error {
+	// Schema evolution for existing databases (ignored if columns already exist)
+	db.Exec("ALTER TABLE agents ADD COLUMN personality TEXT DEFAULT ''")
+	db.Exec("ALTER TABLE agents ADD COLUMN telegram_token_hash TEXT DEFAULT ''")
 	if _, err := db.Exec("PRAGMA foreign_keys = ON"); err != nil {
 		return fmt.Errorf("enable foreign keys: %w", err)
 	}

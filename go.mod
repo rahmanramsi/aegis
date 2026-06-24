@@ -4,6 +4,8 @@ go 1.25.0
 
 require (
 	github.com/coder/websocket v1.8.15
+	github.com/go-chi/chi/v5 v5.3.0
+	github.com/go-chi/cors v1.2.2
 	github.com/go-telegram/bot v1.21.0
 	github.com/google/uuid v1.6.0
 	github.com/tursodatabase/go-libsql v0.0.0-20260424063416-3051e37e6e04
