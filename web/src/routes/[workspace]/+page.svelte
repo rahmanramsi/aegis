@@ -3,7 +3,7 @@
 	import Card from '$lib/components/ui/card/card.svelte';
 	import Badge from '$lib/components/ui/badge/badge.svelte';
 	import Skeleton from '$lib/components/ui/skeleton/skeleton.svelte';
-	import { api } from '$lib/api';
+	import { api, getToken } from '$lib/api';
 	import type { Workspace, Daemon, Agent } from '$lib/types';
 	import { onMount } from 'svelte';
 	import { Bot, Wrench, Key, Copy, Check } from '@lucide/svelte';
@@ -20,7 +20,7 @@
 		const wid = $page.params.workspace!;
 		const resp = await fetch(`/api/v1/workspaces/${wid}/enrollment-key`, {
 			method: 'POST',
-			headers: { 'Authorization': `Bearer ${api.getToken()}` },
+			headers: { 'Authorization': `Bearer ${getToken()}` },
 		});
 		const data = await resp.json();
 		enrollKey = data.enrollment_key;
