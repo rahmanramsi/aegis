@@ -14,8 +14,9 @@
 	let daemons = $state<Daemon[]>([]);
 	let agents = $state<Agent[]>([]);
 
-	let enrollKey = $state('');
-	let enrollCopied = $state(false);
+	let loading = $state(true);
+	let error = $state<string | null>(null);
+
 
 	async function generateEnrollKey() {
 		const resp = await fetch('/api/v1/me/enrollment-key', {
@@ -37,7 +38,6 @@
 		}
 	}
 
-	let error = $state<string | null>(null);
 
 	onMount(() => {
 		const wid = $page.params.workspace!;
