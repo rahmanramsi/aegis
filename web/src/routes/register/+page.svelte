@@ -102,7 +102,7 @@
 					Register a new Aegis account to get your API key.
 				</Card.Description>
 			</Card.Header>
-			<form onsubmit={handleSubmit}>
+			<form onsubmit={handleSubmit} novalidate>
 				<Card.Content>
 					<div class="space-y-4">
 						{#if error}

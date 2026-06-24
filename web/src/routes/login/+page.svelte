@@ -53,7 +53,7 @@
 			</Card.Description>
 		</Card.Header>
 
-		<form onsubmit={login}>
+		<form onsubmit={login} novalidate>
 			<Card.Content class="space-y-4">
 				<div class="space-y-2">
 					<Label for="email">Email</Label>
