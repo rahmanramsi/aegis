@@ -56,6 +56,8 @@ func (r *Router) onTaskEvent(taskID string, event protocol.Message) {
 		// ignore — most CLIs mirror stdout to stderr
 	case protocol.TypeDone:
 		pt.stream.Done()
+		// Save assistant response to session
+		r.Store.CreateMessage(pt.sessionID, "assistant", event.Content, pt.agentID)
 	case protocol.TypeError:
 		pt.stream.Error(event.Content)
 	}
@@ -94,13 +96,20 @@ func (r *Router) HandleWithAgent(ctx context.Context, m msg.Message, adapter msg
 		slog.Warn("router: create message failed", "err", err)
 	}
 
+	// Build prompt with personality if set
+	prompt := m.Text
+	if agent.Personality != "" {
+		prompt = agent.Personality + "\n\nUser: " + m.Text
+	}
+
 	taskID := uuid.NewString()
 	taskMsg := protocol.Message{
-		Type:    protocol.TypeTask,
-		TaskID:  taskID,
-		Harness: agent.Harness,
-		Prompt:  m.Text,
-		Model:   agent.Model,
+		Type:      protocol.TypeTask,
+		TaskID:    taskID,
+		Harness:   agent.Harness,
+		Prompt:    prompt,
+		Model:     agent.Model,
+		SessionID: session.ID,
 	}
 	if agent.ExtraArgs != "" {
 		taskMsg.ExtraArgs = strings.Fields(agent.ExtraArgs)

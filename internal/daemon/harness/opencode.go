@@ -49,12 +49,14 @@ func (r *OpenCodeRunner) Run(ctx context.Context, req RunRequest) (<-chan Stream
 	}
 
 	args := []string{"run", req.Prompt}
+	if req.SessionID != "" {
+		args = append(args, "--session", req.SessionID)
+	}
 	if req.Model != "" {
 		args = append(args, "--model", req.Model)
 	} else if r.model != "" {
 		args = append(args, "--model", r.model)
 	}
-	args = append(args, req.ExtraArgs...)
 
 	cmd := exec.CommandContext(ctx, path, args...)
 	cmd.Dir = req.WorkDir

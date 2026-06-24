@@ -31,6 +31,7 @@ type Message struct {
 	Harness   string   `json:"harness,omitempty"`
 	Prompt    string   `json:"prompt,omitempty"`
 	Model     string   `json:"model,omitempty"`
+	SessionID string   `json:"session_id,omitempty"`
 	ExtraArgs []string `json:"extra_args,omitempty"`
 }
 

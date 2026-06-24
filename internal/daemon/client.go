@@ -195,6 +195,7 @@ func (c *Client) handleTask(msg protocol.Message) {
 		Prompt:    msg.Prompt,
 		WorkDir:   workDir,
 		Model:     msg.Model,
+		SessionID: msg.SessionID,
 		ExtraArgs: msg.ExtraArgs,
 	}
 

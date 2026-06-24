@@ -21,6 +21,7 @@ type RunRequest struct {
 	Prompt    string
 	WorkDir   string
 	Model     string
+	SessionID string
 	ExtraArgs []string
 }
 
