@@ -7,23 +7,20 @@
 	import Label from '$lib/components/ui/label/label.svelte';
 	import * as Dialog from '$lib/components/ui/dialog';
 	import Skeleton from '$lib/components/ui/skeleton/skeleton.svelte';
-	import { api } from '$lib/api';
-	import type { Daemon, DaemonCreateResponse } from '$lib/types';
+	import { api, getToken } from '$lib/api';
+	import type { Daemon } from '$lib/types';
 	import { onMount } from 'svelte';
 	import { toast } from 'svelte-sonner';
-	import { Wrench, Plus, Clock, Copy, Check } from '@lucide/svelte';
+	import { Wrench, Plus, Clock, Copy, Check, Terminal, Key, Globe } from '@lucide/svelte';
 
 	let daemons = $state<Daemon[]>([]);
 	let loading = $state(true);
 	let error = $state<string | null>(null);
 
-	let newDaemonName = $state('');
-	let registerDialogOpen = $state(false);
-	let registering = $state(false);
-
-	let tokenValue = $state('');
-	let tokenDialogOpen = $state(false);
-	let tokenCopied = $state(false);
+	let addDialogOpen = $state(false);
+	let daemonName = $state('');
+	let apiKeyCopied = $state(false);
+	let commandCopied = $state(false);
 
 	onMount(() => {
 		api.daemons.list()
@@ -32,32 +29,27 @@
 			.finally(() => { loading = false; });
 	});
 
-	async function registerDaemon(e: SubmitEvent) {
-		e.preventDefault();
-		if (!newDaemonName) return;
-		registering = true;
+	function getCommand(): string {
+		const key = getToken();
+		const name = daemonName.trim() || 'aegis-agent';
+		return `AEGIS_API_KEY=${key} AEGIS_DAEMON_NAME=${name} AEGIS_GATEWAY_URL=ws://localhost:8080/api/v1/ws ./aegis-agent`;
+	}
+
+	async function copyApiKey() {
 		try {
-			const resp = await api.daemons.create({ name: newDaemonName });
-			daemons = [...daemons, resp.daemon];
-			tokenValue = resp.token;
-			newDaemonName = '';
-			registerDialogOpen = false;
-			tokenDialogOpen = true;
-			tokenCopied = false;
-			toast.success('Daemon registered');
-		} catch (err: unknown) {
-			toast.error(err instanceof Error ? err.message : 'Failed to register daemon');
-		} finally {
-			registering = false;
+			await navigator.clipboard.writeText(getToken());
+			apiKeyCopied = true;
+		} catch {
+			toast.error('Failed to copy');
 		}
 	}
 
-	async function copyToken() {
+	async function copyCommand() {
 		try {
-			await navigator.clipboard.writeText(tokenValue);
-			tokenCopied = true;
+			await navigator.clipboard.writeText(getCommand());
+			commandCopied = true;
 		} catch {
-			// clipboard unavailable
+			toast.error('Failed to copy');
 		}
 	}
 </script>
@@ -68,9 +60,9 @@
 			<a href="/{$page.params.workspace}" class="text-xs text-zinc-500 hover:text-zinc-400 font-mono transition-colors">&larr; Workspace</a>
 			<h1 class="text-2xl font-bold tracking-tight mt-2">Daemons</h1>
 		</div>
-		<Button variant="outline" size="sm" class="gap-2" onclick={() => { registerDialogOpen = true; newDaemonName = ''; }}>
+		<Button variant="outline" size="sm" class="gap-2" onclick={() => { addDialogOpen = true; daemonName = ''; apiKeyCopied = false; commandCopied = false; }}>
 			<Plus class="size-4" />
-			Register Daemon
+			Add Daemon
 		</Button>
 	</div>
 
@@ -87,8 +79,8 @@
 	{:else if daemons.length === 0}
 		<Card class="border-zinc-800 p-8 text-center">
 			<Wrench class="size-8 text-zinc-700 mx-auto mb-3" />
-			<p class="text-zinc-500 font-mono text-sm">No daemons registered</p>
-			<p class="text-zinc-600 text-xs mt-1">Register a daemon to start running agents</p>
+			<p class="text-zinc-500 font-mono text-sm">No daemons connected</p>
+			<p class="text-zinc-600 text-xs mt-1">Run the agent daemon binary to connect</p>
 		</Card>
 	{:else}
 		<div class="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
@@ -119,56 +111,74 @@
 	{/if}
 </div>
 
-<!-- Register Daemon Dialog -->
-<Dialog.Root bind:open={registerDialogOpen}>
-	<Dialog.Content class="sm:max-w-md">
+<!-- Add Daemon Dialog -->
+<Dialog.Root bind:open={addDialogOpen}>
+	<Dialog.Content class="sm:max-w-lg">
 		<Dialog.Header>
-			<Dialog.Title>Register Daemon</Dialog.Title>
-			<Dialog.Description>Create a new daemon. A token will be shown once after creation.</Dialog.Description>
-		</Dialog.Header>
-		<form onsubmit={registerDaemon} class="space-y-4 py-4">
-			<div class="space-y-2">
-				<Label for="daemon-name">Name</Label>
-				<Input id="daemon-name" bind:value={newDaemonName} placeholder="my-daemon" required />
-			</div>
-			<Dialog.Footer>
-				<Dialog.Close>
-					<Button type="button" variant="ghost">Cancel</Button>
-				</Dialog.Close>
-				<Button type="submit" disabled={registering || !newDaemonName}>
-					{registering ? 'Registering...' : 'Register'}
-				</Button>
-			</Dialog.Footer>
-		</form>
-	</Dialog.Content>
-</Dialog.Root>
-
-<!-- Token Dialog -->
-<Dialog.Root bind:open={tokenDialogOpen}>
-	<Dialog.Content class="sm:max-w-md">
-		<Dialog.Header>
-			<Dialog.Title>Daemon Token</Dialog.Title>
+			<Dialog.Title>Add Daemon</Dialog.Title>
 			<Dialog.Description>
-				Copy this token now. It will not be shown again.
+				Run the agent daemon binary on any machine. It will auto-register and appear here.
 			</Dialog.Description>
 		</Dialog.Header>
 		<div class="py-4 space-y-4">
-			<div class="bg-zinc-950 border border-zinc-800 rounded-lg p-3">
-				<code class="text-xs text-emerald-400 font-mono break-all">{tokenValue}</code>
+			<!-- Daemon Name -->
+			<div class="space-y-2">
+				<Label for="daemon-name">Daemon Name <span class="text-zinc-600 font-normal">(optional)</span></Label>
+				<Input id="daemon-name" bind:value={daemonName} placeholder="aegis-agent" />
 			</div>
-			<Button variant="outline" size="sm" class="gap-2 w-full" onclick={copyToken}>
-				{#if tokenCopied}
-					<Check class="size-4 text-emerald-400" />
-					Copied
-				{:else}
-					<Copy class="size-4" />
-					Copy Token
-				{/if}
-			</Button>
+
+			<!-- API Key -->
+			<div class="space-y-2">
+				<Label class="flex items-center gap-1.5">
+					<Key class="size-3.5" />
+					Your API Key
+				</Label>
+				<div class="flex gap-2">
+					<code class="flex-1 bg-zinc-950 border border-zinc-800 rounded-lg px-3 py-2 text-xs text-emerald-400 font-mono break-all">
+						{getToken()}
+					</code>
+					<Button variant="outline" size="sm" class="gap-1.5 shrink-0" onclick={copyApiKey}>
+						{#if apiKeyCopied}
+							<Check class="size-3.5 text-emerald-400" />
+							Copied
+						{:else}
+							<Copy class="size-3.5" />
+							Copy
+						{/if}
+					</Button>
+				</div>
+			</div>
+
+			<!-- Run Command -->
+			<div class="space-y-2">
+				<Label class="flex items-center gap-1.5">
+					<Terminal class="size-3.5" />
+					Run this command
+				</Label>
+				<div class="bg-zinc-950 border border-zinc-800 rounded-lg p-3">
+					<code class="text-xs text-zinc-300 font-mono break-all select-all">
+						{getCommand()}
+					</code>
+				</div>
+				<Button variant="outline" size="sm" class="gap-1.5 w-full" onclick={copyCommand}>
+					{#if commandCopied}
+						<Check class="size-3.5 text-emerald-400" />
+						Copied
+					{:else}
+						<Copy class="size-3.5" />
+						Copy Command
+					{/if}
+				</Button>
+			</div>
+
+			<div class="flex items-start gap-2 text-xs text-zinc-500 bg-zinc-900 rounded-lg p-3">
+				<Globe class="size-3.5 mt-0.5 shrink-0" />
+				<span>Make sure the binary is on the target machine and the gateway URL is reachable.</span>
+			</div>
 		</div>
 		<Dialog.Footer>
 			<Dialog.Close>
-				<Button variant="ghost">Close</Button>
+				<Button variant="ghost">Done</Button>
 			</Dialog.Close>
 		</Dialog.Footer>
 	</Dialog.Content>
