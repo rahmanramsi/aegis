@@ -1,4 +1,4 @@
-import type { Workspace, Daemon, DaemonCreateResponse, Agent, Connection, HealthStatus } from '$lib/types';
+import type { Workspace, Daemon, DaemonCreateResponse, Agent, AgentCreateResponse, Connection, HealthStatus } from '$lib/types';
 
 const BASE = '/api/v1';
 const TOKEN_KEY = 'aegis_api_key';
@@ -79,7 +79,7 @@ export const api = {
 	},
 	agents: {
 		list: (wid: string): Promise<Agent[]> => request(`/workspaces/${wid}/agents`),
-		create: (wid: string, data: { name: string; daemon_id: string; harness: string; model?: string }): Promise<Agent> =>
+		create: (wid: string, data: { name: string; daemon_id: string; harness: string; model?: string; telegram_token?: string }): Promise<AgentCreateResponse> =>
 			request(`/workspaces/${wid}/agents`, { method: 'POST', body: JSON.stringify(data) }),
 		get: (id: string): Promise<Agent> => request(`/agents/${id}`),
 		update: (id: string, data: { name?: string; harness?: string; model?: string; enabled?: boolean }): Promise<Agent> =>

@@ -125,3 +125,71 @@ func (r *Router) Handle(ctx context.Context, m msg.Message, adapter msg.Adapter)
 
 	slog.Info("router: task dispatched", "task_id", taskID, "agent", agent.ID, "daemon", agent.DaemonID, "chat", m.ChatID)
 }
+
+func (r *Router) HandleWithAgent(ctx context.Context, m msg.Message, adapter msg.Adapter, agent *store.Agent) {
+	if agent == nil || !agent.Enabled {
+		adapter.Send(m.ChatID, "Agent not found or disabled.")
+		return
+	}
+
+	daemon, err := r.Store.GetDaemon(agent.DaemonID)
+	if err != nil || daemon == nil || daemon.Status != "online" {
+		adapter.Send(m.ChatID, "Agent daemon is offline.")
+		return
+	}
+
+	// Look up or create connection for this chat
+	connection, err := r.Store.FindConnection(m.Platform, m.ChatID)
+	if err != nil || connection == nil {
+		connection, err = r.Store.CreateConnection(agent.ID, m.Platform, m.ChatID)
+		if err != nil {
+			slog.Warn("router: create connection failed", "err", err)
+			adapter.Send(m.ChatID, "Failed to set up connection.")
+			return
+		}
+	}
+
+	session, err := r.Store.GetOrCreateSession(connection.ID, m.UserName)
+	if err != nil {
+		slog.Warn("router: get/create session failed", "err", err)
+		adapter.Send(m.ChatID, "Internal error.")
+		return
+	}
+
+	_, err = r.Store.CreateMessage(session.ID, "user", m.Text, agent.ID)
+	if err != nil {
+		slog.Warn("router: create message failed", "err", err)
+	}
+
+	taskID := uuid.NewString()
+	taskMsg := protocol.Message{
+		Type:    protocol.TypeTask,
+		TaskID:  taskID,
+		Harness: agent.Harness,
+		Prompt:  m.Text,
+		Model:   agent.Model,
+	}
+	if agent.ExtraArgs != "" {
+		taskMsg.ExtraArgs = strings.Fields(agent.ExtraArgs)
+	}
+
+	r.mu.Lock()
+	r.pending[taskID] = &pendingTask{
+		adapter:   adapter,
+		chatID:    m.ChatID,
+		sessionID: session.ID,
+		agentID:   agent.ID,
+	}
+	r.mu.Unlock()
+
+	if err := r.Hub.SendTask(agent.DaemonID, taskMsg); err != nil {
+		r.mu.Lock()
+		delete(r.pending, taskID)
+		r.mu.Unlock()
+		slog.Warn("router: dispatch failed", "daemon", agent.DaemonID, "err", err)
+		adapter.Send(m.ChatID, "Failed to dispatch task: "+err.Error())
+		return
+	}
+
+	slog.Info("router: task dispatched", "task_id", taskID, "agent", agent.ID, "daemon", agent.DaemonID, "chat", m.ChatID)
+}

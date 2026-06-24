@@ -2,9 +2,10 @@ package msg
 
 import (
 	"context"
+	"crypto/sha256"
+	"encoding/hex"
 	"fmt"
 	"log/slog"
-	"os"
 	"strconv"
 
 	"github.com/go-telegram/bot"
@@ -17,12 +18,7 @@ type TelegramAdapter struct {
 	msgCh chan Message
 }
 
-func NewTelegramAdapter() (*TelegramAdapter, error) {
-	token := os.Getenv("AEGIS_TELEGRAM_TOKEN")
-	if token == "" {
-		return nil, fmt.Errorf("AEGIS_TELEGRAM_TOKEN not set")
-	}
-
+func NewTelegramAdapterWithToken(token string) (*TelegramAdapter, error) {
 	b, err := bot.New(token)
 	if err != nil {
 		return nil, fmt.Errorf("create telegram bot: %w", err)
@@ -60,7 +56,6 @@ func (t *TelegramAdapter) Start(ctx context.Context) (<-chan Message, error) {
 		},
 	)
 
-	// Start long polling in background (blocking call)
 	go t.b.Start(ctx)
 
 	slog.Info("telegram adapter started")
@@ -73,7 +68,6 @@ func (t *TelegramAdapter) Send(chatID, text string) error {
 		slog.Warn("telegram send: invalid chat id", "chat_id", chatID, "err", err)
 		return nil
 	}
-	slog.Info("telegram send", "chat_id", chatID, "text", text)
 	_, err = t.b.SendMessage(context.Background(), &bot.SendMessageParams{
 		ChatID: chatIDInt,
 		Text:   text,
@@ -86,4 +80,9 @@ func (t *TelegramAdapter) Send(chatID, text string) error {
 
 func (t *TelegramAdapter) Close() error {
 	return nil
+}
+
+func sha256Hex(s string) string {
+	h := sha256.Sum256([]byte(s))
+	return hex.EncodeToString(h[:])
 }

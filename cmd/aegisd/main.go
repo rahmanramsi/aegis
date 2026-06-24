@@ -33,8 +33,19 @@ func main() {
 	defer s.Close()
 
 	hub := ws.NewHub(s)
+	r := router.NewRouter(s, hub)
+
+	bm := msg.NewBotManager(func(ctx context.Context, tokenHash string, m msg.Message, adapter msg.Adapter) {
+		agent, err := s.GetAgentByTelegramToken(tokenHash)
+		if err != nil {
+			adapter.Send(m.ChatID, "No agent configured for this bot.")
+			return
+		}
+		r.HandleWithAgent(ctx, m, adapter, agent)
+	})
+
 	staticFS, _ := fs.Sub(aegis.EmbeddedStatic, "static")
-	server := gateway.NewServer(s, hub, staticFS)
+	server := gateway.NewServer(s, hub, bm, staticFS)
 
 	addr := os.Getenv("AEGIS_ADDR")
 	if addr == "" {
@@ -51,24 +62,6 @@ func main() {
 
 	ctx, cancel := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer cancel()
-
-	// Start Telegram adapter if configured
-	tg, err := msg.NewTelegramAdapter()
-	if err != nil {
-		slog.Info("telegram adapter not started", "reason", err)
-	} else {
-		r := router.NewRouter(s, hub)
-		msgCh, err := tg.Start(ctx)
-		if err != nil {
-			slog.Error("start telegram adapter", "err", err)
-		} else {
-			go func() {
-				for m := range msgCh {
-					r.Handle(ctx, m, tg)
-				}
-			}()
-		}
-	}
 
 	<-ctx.Done()
 	slog.Info("gateway shutting down")

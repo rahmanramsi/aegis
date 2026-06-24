@@ -7,23 +7,26 @@ import (
 	"strings"
 
 	"github.com/rahmanramsi/aegis/internal/gateway/api"
+	"github.com/rahmanramsi/aegis/internal/gateway/msg"
 	"github.com/rahmanramsi/aegis/internal/gateway/store"
 	"github.com/rahmanramsi/aegis/internal/gateway/ws"
 )
 
 type Server struct {
-	Store    *store.Store
-	Hub      *ws.Hub
-	mux      *http.ServeMux
-	staticFS fs.FS
+	Store      *store.Store
+	Hub        *ws.Hub
+	BotManager *msg.BotManager
+	mux        *http.ServeMux
+	staticFS   fs.FS
 }
 
-func NewServer(s *store.Store, hub *ws.Hub, staticFS fs.FS) *Server {
+func NewServer(s *store.Store, hub *ws.Hub, bm *msg.BotManager, staticFS fs.FS) *Server {
 	server := &Server{
-		Store:    s,
-		Hub:      hub,
-		mux:      http.NewServeMux(),
-		staticFS: staticFS,
+		Store:      s,
+		Hub:        hub,
+		BotManager: bm,
+		mux:        http.NewServeMux(),
+		staticFS:   staticFS,
 	}
 	server.registerRoutes()
 	return server
@@ -36,11 +39,17 @@ func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 func (s *Server) registerRoutes() {
 	wh := &api.WorkspaceHandler{Store: s.Store}
 	dh := &api.DaemonHandler{Store: s.Store}
-	ah := &api.AgentHandler{Store: s.Store}
+	ah := &api.AgentHandler{Store: s.Store, BotManager: s.BotManager}
 	ch := &api.ConnectionHandler{Store: s.Store}
 	sh := &api.SessionHandler{Store: s.Store}
 
 	mux := s.mux
+
+	// Auth (public)
+	authH := &api.AuthHandler{Store: s.Store}
+	mux.HandleFunc("POST /api/v1/auth/register", authH.Register)
+	mux.HandleFunc("POST /api/v1/auth/login", authH.Login)
+	mux.HandleFunc("GET /api/v1/auth/me", authH.Me)
 
 	// Health
 	mux.HandleFunc("GET /api/v1/health", func(w http.ResponseWriter, r *http.Request) {
@@ -84,18 +93,22 @@ func (s *Server) registerRoutes() {
 	fileServer := http.FileServer(http.FS(s.staticFS))
 	mux.HandleFunc("GET /", func(w http.ResponseWriter, r *http.Request) {
 		path := strings.TrimPrefix(r.URL.Path, "/")
+		if path == "" {
+			path = "index.html"
+		}
+		// Try direct file
 		f, err := s.staticFS.Open(path)
-		if err != nil {
-			r.URL.Path = "/"
-		}
-		if f != nil {
+		if err == nil {
 			f.Close()
+			fileServer.ServeHTTP(w, r)
+			return
 		}
+		// SPA fallback
 		fileServer.ServeHTTP(w, r)
 	})
 
 	// Wrap with auth middleware, then CORS middleware
-	authMux := authMiddleware(mux)
+	authMux := authMiddleware(mux, s.Store)
 	corsMux := corsMiddleware(authMux)
 	s.mux = http.NewServeMux()
 	s.mux.Handle("/", corsMux)
@@ -105,23 +118,14 @@ func corsMiddleware(next http.Handler) http.Handler {
 	origin := "*"
 	if os.Getenv("AEGIS_ENV") == "production" {
 		origin = os.Getenv("AEGIS_BASE_URL")
-		if origin == "" {
-			origin = ""
-		}
 	}
-
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if len(r.URL.Path) >= 5 && r.URL.Path[:5] == "/api/" {
-			if origin != "" {
-				w.Header().Set("Access-Control-Allow-Origin", origin)
-			}
-			w.Header().Set("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS")
-			w.Header().Set("Access-Control-Allow-Headers", "Content-Type, Authorization")
-
-			if r.Method == http.MethodOptions {
-				w.WriteHeader(http.StatusNoContent)
-				return
-			}
+		w.Header().Set("Access-Control-Allow-Origin", origin)
+		w.Header().Set("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS")
+		w.Header().Set("Access-Control-Allow-Headers", "Content-Type, Authorization")
+		if r.Method == "OPTIONS" {
+			w.WriteHeader(http.StatusNoContent)
+			return
 		}
 		next.ServeHTTP(w, r)
 	})

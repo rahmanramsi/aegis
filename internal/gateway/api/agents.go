@@ -1,6 +1,7 @@
 package api
 
 import (
+	"context"
 	"encoding/json"
 	"log/slog"
 	"net/http"
@@ -9,16 +10,21 @@ import (
 )
 
 type AgentHandler struct {
-	Store *store.Store
+	Store      *store.Store
+	BotManager interface {
+		AddBot(ctx context.Context, token string) error
+		RemoveBotByHash(hash string)
+	}
 }
 
 type createAgentInput struct {
-	DaemonID  string `json:"daemon_id"`
-	Name      string `json:"name"`
-	Harness   string `json:"harness"`
-	Model     string `json:"model"`
-	ExtraArgs string `json:"extra_args"`
-	Enabled   *bool  `json:"enabled"`
+	DaemonID      string `json:"daemon_id"`
+	Name          string `json:"name"`
+	Harness       string `json:"harness"`
+	Model         string `json:"model"`
+	ExtraArgs     string `json:"extra_args"`
+	Enabled       *bool  `json:"enabled"`
+	TelegramToken string `json:"telegram_token"`
 }
 
 type updateAgentInput struct {
@@ -80,21 +86,36 @@ func (h *AgentHandler) Create(w http.ResponseWriter, r *http.Request) {
 		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "harness not available on daemon"})
 		return
 	}
-
 	enabled := true
 	if in.Enabled != nil {
 		enabled = *in.Enabled
 	}
 
-	agent, err := h.Store.CreateAgent(wid, in.DaemonID, in.Name, in.Harness, in.Model, in.ExtraArgs, enabled)
+	tokenHash := ""
+	if in.TelegramToken != "" {
+		tokenHash = sha256Hex(in.TelegramToken)
+	}
+
+	agent, err := h.Store.CreateAgent(wid, in.DaemonID, in.Name, in.Harness, in.Model, in.ExtraArgs, tokenHash, enabled)
 	if err != nil {
 		slog.Error("create agent", "err", err)
 		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "internal error"})
 		return
 	}
 
+	// Start Telegram bot for this agent
+	if in.TelegramToken != "" && h.BotManager != nil {
+		if err := h.BotManager.AddBot(context.Background(), in.TelegramToken); err != nil {
+			slog.Warn("start bot", "err", err)
+		}
+	}
+
 	w.WriteHeader(http.StatusCreated)
-	json.NewEncoder(w).Encode(agent)
+	json.NewEncoder(w).Encode(map[string]interface{}{
+		"agent":          agent,
+		"telegram_token": in.TelegramToken,
+	})
+
 }
 
 func (h *AgentHandler) Get(w http.ResponseWriter, r *http.Request) {
@@ -158,6 +179,12 @@ func (h *AgentHandler) Update(w http.ResponseWriter, r *http.Request) {
 
 func (h *AgentHandler) Delete(w http.ResponseWriter, r *http.Request) {
 	id := r.PathValue("id")
+
+	agent, err := h.Store.GetAgent(id)
+	if err == nil && agent.TelegramTokenHash != "" && h.BotManager != nil {
+		h.BotManager.RemoveBotByHash(agent.TelegramTokenHash)
+	}
+
 	if err := h.Store.DeleteAgent(id); err != nil {
 		writeJSON(w, http.StatusNotFound, map[string]string{"error": "not found"})
 		return

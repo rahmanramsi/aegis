@@ -44,3 +44,8 @@ export interface DaemonCreateResponse {
 	daemon: Daemon;
 	token: string;
 }
+
+export interface AgentCreateResponse {
+	agent: Agent;
+	telegram_token: string;
+}
