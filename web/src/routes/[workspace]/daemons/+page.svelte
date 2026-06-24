@@ -26,8 +26,7 @@
 	let tokenCopied = $state(false);
 
 	onMount(() => {
-		const wid = $page.params.workspace!;
-		api.daemons.list(wid)
+		api.daemons.list()
 			.then((d) => { daemons = d; })
 			.catch((e: Error) => { error = e.message; })
 			.finally(() => { loading = false; });
@@ -38,8 +37,7 @@
 		if (!newDaemonName) return;
 		registering = true;
 		try {
-			const wid = $page.params.workspace!;
-			const resp = await api.daemons.create(wid, { name: newDaemonName });
+			const resp = await api.daemons.create({ name: newDaemonName });
 			daemons = [...daemons, resp.daemon];
 			tokenValue = resp.token;
 			newDaemonName = '';

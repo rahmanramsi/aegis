@@ -55,20 +55,24 @@ func (h *AgentHandler) Create(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	wid := chi.URLParam(r, "wid")
 
+	user := store.UserFromContext(r.Context())
+	if user == nil {
+		writeJSON(w, http.StatusUnauthorized, map[string]string{"error": "authentication required"})
+		return
+	}
+
 	var in createAgentInput
 	if err := json.NewDecoder(r.Body).Decode(&in); err != nil {
 		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "invalid JSON body"})
 		return
 	}
-
-	// Validate: daemon must belong to the same workspace
 	daemon, err := h.Store.GetDaemon(in.DaemonID)
 	if err != nil {
 		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "daemon not found"})
 		return
 	}
-	if daemon.WorkspaceID != wid {
-		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "daemon does not belong to workspace"})
+	if daemon.UserID != user.ID {
+		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "daemon does not belong to your account"})
 		return
 	}
 

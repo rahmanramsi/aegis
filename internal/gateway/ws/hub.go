@@ -68,10 +68,10 @@ func (h *Hub) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		}
 	case protocol.TypeEnroll:
 		keyHash := sha256Hex(msg.WorkspaceKey)
-		ws, err := h.Store.GetWorkspaceByEnrollmentKey(keyHash)
+		user, err := h.Store.GetUserByEnrollmentKey(keyHash)
 		if err != nil {
 			slog.Error("enroll: invalid key", "err", err)
-			wsjson.Write(ctx, conn, protocol.Message{Type: protocol.TypeError, Content: "invalid workspace key"})
+			wsjson.Write(ctx, conn, protocol.Message{Type: protocol.TypeError, Content: "invalid enrollment key"})
 			conn.Close(websocket.StatusPolicyViolation, "invalid key")
 			return
 		}
@@ -80,7 +80,7 @@ func (h *Hub) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			name = "auto"
 		}
 		daemonToken := generateToken()
-		d, err := h.Store.CreateDaemon(ws.ID, name, sha256Hex(daemonToken))
+		d, err := h.Store.CreateDaemon(user.ID, name, sha256Hex(daemonToken))
 		if err != nil {
 			slog.Error("enroll: create daemon", "err", err)
 			conn.Close(websocket.StatusInternalError, "failed to create daemon")

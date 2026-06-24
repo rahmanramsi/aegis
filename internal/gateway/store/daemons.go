@@ -9,7 +9,7 @@ import (
 
 type Daemon struct {
 	ID          string  `json:"id"`
-	WorkspaceID string  `json:"workspace_id"`
+	UserID      string  `json:"user_id"`
 	Name        string  `json:"name"`
 	TokenHash   string  `json:"-"`
 	Status      string  `json:"status"`
@@ -17,18 +17,18 @@ type Daemon struct {
 	CreatedAt   string  `json:"created_at"`
 }
 
-func (s *Store) CreateDaemon(workspaceID, name, tokenHash string) (*Daemon, error) {
+func (s *Store) CreateDaemon(userID, name, tokenHash string) (*Daemon, error) {
 	d := &Daemon{
 		ID:          uuid.NewString(),
-		WorkspaceID: workspaceID,
+		UserID:      userID,
 		Name:        name,
 		TokenHash:   tokenHash,
 		Status:      "offline",
 		CreatedAt:   time.Now().UTC().Format(time.RFC3339),
 	}
 	_, err := s.DB.Exec(
-		"INSERT INTO daemons (id, workspace_id, name, token_hash, status, created_at) VALUES (?, ?, ?, ?, ?, ?)",
-		d.ID, d.WorkspaceID, d.Name, d.TokenHash, d.Status, d.CreatedAt,
+		"INSERT INTO daemons (id, user_id, name, token_hash, status, created_at) VALUES (?, ?, ?, ?, ?, ?)",
+		d.ID, d.UserID, d.Name, d.TokenHash, d.Status, d.CreatedAt,
 	)
 	if err != nil {
 		return nil, err
@@ -73,10 +73,10 @@ func (s *Store) AuthenticateDaemon(daemonID, tokenHash string, harnesses []strin
 	return nil
 }
 
-func (s *Store) ListDaemonsByWorkspace(workspaceID string) ([]Daemon, error) {
+func (s *Store) ListDaemonsByUser(userID string) ([]Daemon, error) {
 	rows, err := s.DB.Query(
-		"SELECT id, workspace_id, name, token_hash, status, last_seen, created_at FROM daemons WHERE workspace_id = ? ORDER BY created_at DESC",
-		workspaceID,
+		"SELECT id, user_id, name, token_hash, status, last_seen, created_at FROM daemons WHERE user_id = ? ORDER BY created_at DESC",
+		userID,
 	)
 	if err != nil {
 		return nil, err
@@ -86,7 +86,7 @@ func (s *Store) ListDaemonsByWorkspace(workspaceID string) ([]Daemon, error) {
 	daemons := make([]Daemon, 0)
 	for rows.Next() {
 		var d Daemon
-		if err := rows.Scan(&d.ID, &d.WorkspaceID, &d.Name, &d.TokenHash, &d.Status, &d.LastSeen, &d.CreatedAt); err != nil {
+		if err := rows.Scan(&d.ID, &d.UserID, &d.Name, &d.TokenHash, &d.Status, &d.LastSeen, &d.CreatedAt); err != nil {
 			return nil, err
 		}
 		daemons = append(daemons, d)
@@ -97,8 +97,8 @@ func (s *Store) ListDaemonsByWorkspace(workspaceID string) ([]Daemon, error) {
 func (s *Store) GetDaemon(id string) (*Daemon, error) {
 	var d Daemon
 	err := s.DB.QueryRow(
-		"SELECT id, workspace_id, name, token_hash, status, last_seen, created_at FROM daemons WHERE id = ?", id,
-	).Scan(&d.ID, &d.WorkspaceID, &d.Name, &d.TokenHash, &d.Status, &d.LastSeen, &d.CreatedAt)
+		"SELECT id, user_id, name, token_hash, status, last_seen, created_at FROM daemons WHERE id = ?", id,
+	).Scan(&d.ID, &d.UserID, &d.Name, &d.TokenHash, &d.Status, &d.LastSeen, &d.CreatedAt)
 	if err != nil {
 		return nil, err
 	}

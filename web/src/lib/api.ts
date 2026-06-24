@@ -73,11 +73,13 @@ export const api = {
 		delete: (id: string): Promise<void> => request(`/workspaces/${id}`, { method: 'DELETE' }),
 	},
 	daemons: {
-		list: (wid: string): Promise<Daemon[]> => request(`/workspaces/${wid}/daemons`),
-		create: (wid: string, data: { name: string }): Promise<DaemonCreateResponse> =>
-			request(`/workspaces/${wid}/daemons`, { method: 'POST', body: JSON.stringify(data) }),
+		list: (): Promise<Daemon[]> => request('/daemons'),
+		create: (data: { name: string }): Promise<DaemonCreateResponse> =>
+			request('/daemons', { method: 'POST', body: JSON.stringify(data) }),
 		get: (id: string): Promise<Daemon> => request(`/daemons/${id}`),
 		delete: (id: string): Promise<void> => request(`/daemons/${id}`, { method: 'DELETE' }),
+		enrollmentKey: (): Promise<{ key: string }> =>
+			request('/me/enrollment-key', { method: 'POST' }),
 	},
 	agents: {
 		list: (wid: string): Promise<Agent[]> => request(`/workspaces/${wid}/agents`),

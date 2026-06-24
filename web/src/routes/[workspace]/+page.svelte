@@ -3,41 +3,22 @@
 	import Card from '$lib/components/ui/card/card.svelte';
 	import Badge from '$lib/components/ui/badge/badge.svelte';
 	import Skeleton from '$lib/components/ui/skeleton/skeleton.svelte';
-	import { api, getToken } from '$lib/api';
+	import { api } from '$lib/api';
 	import type { Workspace, Daemon, Agent } from '$lib/types';
 	import { onMount } from 'svelte';
-	import { Bot, Wrench, Key, Copy, Check } from '@lucide/svelte';
-	import Button from '$lib/components/ui/button/button.svelte';
+	import { Bot, Wrench } from '@lucide/svelte';
 
 	let workspace = $state<Workspace | null>(null);
 	let daemons = $state<Daemon[]>([]);
 	let agents = $state<Agent[]>([]);
-	let loading = $state(true);
-	let enrollKey = $state('');
-	let enrollCopied = $state(false);
 
-	async function generateEnrollKey() {
-		const wid = $page.params.workspace!;
-		const resp = await fetch(`/api/v1/workspaces/${wid}/enrollment-key`, {
-			method: 'POST',
-			headers: { 'Authorization': `Bearer ${getToken()}` },
-		});
-		const data = await resp.json();
-		enrollKey = data.enrollment_key;
-	}
-
-	async function copyEnrollKey() {
-		await navigator.clipboard.writeText(enrollKey);
-		enrollCopied = true;
-		setTimeout(() => enrollCopied = false, 2000);
-	}
 	let error = $state<string | null>(null);
 
 	onMount(() => {
 		const wid = $page.params.workspace!;
 		Promise.all([
 			api.workspaces.get(wid),
-			api.daemons.list(wid).catch(() => [] as Daemon[]),
+			api.daemons.list().catch(() => [] as Daemon[]),
 			api.agents.list(wid).catch(() => [] as Agent[]),
 		]).then(([w, d, a]) => {
 			workspace = w;
@@ -104,28 +85,6 @@
 			</a>
 		</div>
 
-		<Card class="border-zinc-800 p-4">
-			<div class="flex items-center gap-2 mb-2">
-				<Key class="size-4 text-yellow-400" />
-				<h3 class="text-sm font-semibold">Enroll Daemon</h3>
-			</div>
-			<p class="text-xs text-zinc-500 mb-3">Run this command on any machine to connect a daemon:</p>
-			{#if enrollKey}
-				<div class="flex items-center gap-2">
-					<code class="flex-1 bg-zinc-950 border border-zinc-700 rounded px-3 py-2 text-xs text-emerald-300 font-mono break-all">
-						AEGIS_WORKSPACE_KEY={enrollKey} ./aegis-agent
-					</code>
-					<Button variant="outline" size="sm" onclick={copyEnrollKey}>
-						{#if enrollCopied}<Check class="size-3 text-emerald-400" />{:else}<Copy class="size-3" />{/if}
-					</Button>
-				</div>
-			{:else}
-				<Button variant="outline" size="sm" onclick={generateEnrollKey}>
-					<Key class="size-3" />
-					Generate Enroll Key
-				</Button>
-			{/if}
-		</Card>
 		<section>
 			<h2 class="text-sm font-semibold text-zinc-400 uppercase tracking-wider mb-4">Recent Daemons</h2>
 			{#if daemons.length === 0}

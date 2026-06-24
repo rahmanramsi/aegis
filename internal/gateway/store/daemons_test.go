@@ -5,8 +5,8 @@ import "testing"
 func TestCreateAndAuthDaemon(t *testing.T) {
 	s := openTestDB(t)
 
-	ws, _ := s.CreateWorkspace("W", "w")
-	d, err := s.CreateDaemon(ws.ID, "mac", "test-hash")
+	u, _, _ := s.CreateUser("test@a.test", "pass")
+	d, err := s.CreateDaemon(u.ID, "mac", "test-hash")
 	if err != nil {
 		t.Fatalf("create daemon: %v", err)
 	}
@@ -47,14 +47,14 @@ func TestCreateAndAuthDaemon(t *testing.T) {
 	}
 }
 
-func TestListDaemonsByWorkspace(t *testing.T) {
+func TestListDaemonsByUser(t *testing.T) {
 	s := openTestDB(t)
 
-	ws, _ := s.CreateWorkspace("W", "w")
-	s.CreateDaemon(ws.ID, "d1", "h1")
-	s.CreateDaemon(ws.ID, "d2", "h2")
+	u, _, _ := s.CreateUser("test@b.test", "pass")
+	s.CreateDaemon(u.ID, "d1", "h1")
+	s.CreateDaemon(u.ID, "d2", "h2")
 
-	list, err := s.ListDaemonsByWorkspace(ws.ID)
+	list, err := s.ListDaemonsByUser(u.ID)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -66,8 +66,8 @@ func TestListDaemonsByWorkspace(t *testing.T) {
 func TestSetDaemonOffline(t *testing.T) {
 	s := openTestDB(t)
 
-	ws, _ := s.CreateWorkspace("W", "w")
-	d, _ := s.CreateDaemon(ws.ID, "d", "h")
+	u, _, _ := s.CreateUser("test@c.test", "pass")
+	d, _ := s.CreateDaemon(u.ID, "d", "h")
 	s.AuthenticateDaemon(d.ID, "h", nil)
 
 	s.SetDaemonOffline(d.ID)
@@ -80,8 +80,8 @@ func TestSetDaemonOffline(t *testing.T) {
 func TestDeleteDaemon(t *testing.T) {
 	s := openTestDB(t)
 
-	ws, _ := s.CreateWorkspace("W", "w")
-	d, _ := s.CreateDaemon(ws.ID, "d", "h")
+	u, _, _ := s.CreateUser("test@d.test", "pass")
+	d, _ := s.CreateDaemon(u.ID, "d", "h")
 
 	s.AuthenticateDaemon(d.ID, "h", []string{"echo"})
 	s.DeleteDaemon(d.ID)

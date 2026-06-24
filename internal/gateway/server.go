@@ -59,6 +59,7 @@ func (s *Server) registerRoutes() {
 			r.Use(authMiddleware(s.Store))
 
 			r.Get("/auth/me", authH.Me)
+			r.Post("/me/enrollment-key", authH.GenerateEnrollmentKey)
 
 			wh := &api.WorkspaceHandler{Store: s.Store}
 			r.Get("/workspaces", wh.List)
@@ -68,9 +69,8 @@ func (s *Server) registerRoutes() {
 			r.Delete("/workspaces/{id}", wh.Delete)
 
 			dh := &api.DaemonHandler{Store: s.Store}
-			r.Get("/workspaces/{wid}/daemons", dh.List)
-			r.Post("/workspaces/{id}/enrollment-key", wh.GenerateEnrollmentKey)
-			r.Post("/workspaces/{wid}/daemons", dh.Create)
+			r.Get("/daemons", dh.List)
+			r.Post("/daemons", dh.Create)
 			r.Get("/daemons/{id}", dh.Get)
 			r.Delete("/daemons/{id}", dh.Delete)
 

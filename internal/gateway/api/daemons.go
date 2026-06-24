@@ -33,8 +33,12 @@ type daemonWithHarnesses struct {
 
 func (h *DaemonHandler) List(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
-	wid := chi.URLParam(r, "wid")
-	daemons, err := h.Store.ListDaemonsByWorkspace(wid)
+	user := store.UserFromContext(r.Context())
+	if user == nil {
+		writeJSON(w, http.StatusUnauthorized, map[string]string{"error": "unauthorized"})
+		return
+	}
+	daemons, err := h.Store.ListDaemonsByUser(user.ID)
 	if err != nil {
 		slog.Error("list daemons", "err", err)
 		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "internal error"})
@@ -50,7 +54,11 @@ func (h *DaemonHandler) List(w http.ResponseWriter, r *http.Request) {
 
 func (h *DaemonHandler) Create(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
-	wid := chi.URLParam(r, "wid")
+	user := store.UserFromContext(r.Context())
+	if user == nil {
+		writeJSON(w, http.StatusUnauthorized, map[string]string{"error": "unauthorized"})
+		return
+	}
 
 	var in createDaemonInput
 	if err := json.NewDecoder(r.Body).Decode(&in); err != nil {
@@ -70,7 +78,7 @@ func (h *DaemonHandler) Create(w http.ResponseWriter, r *http.Request) {
 	// Hash token for storage
 	tokenHash := sha256Hex(token)
 
-	d, err := h.Store.CreateDaemon(wid, in.Name, tokenHash)
+	d, err := h.Store.CreateDaemon(user.ID, in.Name, tokenHash)
 	if err != nil {
 		slog.Error("create daemon", "err", err)
 		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "internal error"})

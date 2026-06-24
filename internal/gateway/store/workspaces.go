@@ -12,8 +12,6 @@ type Workspace struct {
 	Name               string `json:"name"`
 	Slug               string `json:"slug"`
 	CreatedAt          string `json:"created_at"`
-	EnrollmentKeyHash  string `json:"-"`
-	HasEnrollmentKey   bool   `json:"has_enrollment_key"`
 }
 
 func (s *Store) CreateWorkspace(name, slug string) (*Workspace, error) {
@@ -88,21 +86,4 @@ func (s *Store) DeleteWorkspace(id string) error {
 		return sql.ErrNoRows
 	}
 	return nil
-}
-
-func (s *Store) GenerateEnrollmentKey(workspaceID string) (string, error) {
-	key, hash := generateAPIKey()
-	_, err := s.DB.Exec("UPDATE workspaces SET enrollment_key_hash = ? WHERE id = ?", hash, workspaceID)
-	return key, err
-}
-
-func (s *Store) GetWorkspaceByEnrollmentKey(keyHash string) (*Workspace, error) {
-	var w Workspace
-	err := s.DB.QueryRow(
-		"SELECT id, name, slug, created_at FROM workspaces WHERE enrollment_key_hash = ?", keyHash,
-	).Scan(&w.ID, &w.Name, &w.Slug, &w.CreatedAt)
-	if err != nil {
-		return nil, err
-	}
-	return &w, nil
 }

@@ -27,8 +27,7 @@
 	const availableHarnesses = $derived(selectedDaemon?.harnesses ?? []);
 
 	onMount(() => {
-		const wid = $page.params.workspace!;
-		api.daemons.list(wid)
+		api.daemons.list()
 			.then((d) => { daemons = d; })
 			.catch(() => { toast.error('Failed to load daemons'); });
 	});
