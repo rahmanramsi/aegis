@@ -41,6 +41,7 @@ func migrate(db *sql.DB) error {
 	// Schema evolution (ignored if columns already exist)
 	db.Exec("ALTER TABLE daemons ADD COLUMN user_id TEXT DEFAULT ''")
 	db.Exec("ALTER TABLE daemons ADD COLUMN harness_models TEXT DEFAULT ''")
+	db.Exec("ALTER TABLE users ADD COLUMN api_key_raw TEXT DEFAULT ''")
 	if _, err := db.Exec("PRAGMA foreign_keys = ON"); err != nil {
 		return fmt.Errorf("enable foreign keys: %w", err)
 	}

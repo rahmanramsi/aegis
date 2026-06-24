@@ -77,8 +77,8 @@ func (s *Store) CreateUser(email, password string) (*User, string, error) {
 	}
 
 	_, err = s.DB.Exec(
-		"INSERT INTO users (id, email, password_hash, api_key_hash, created_at) VALUES (?, ?, ?, ?, ?)",
-		u.ID, u.Email, u.PasswordHash, u.APIKeyHash, u.CreatedAt,
+		"INSERT INTO users (id, email, password_hash, api_key_hash, api_key_raw, created_at) VALUES (?, ?, ?, ?, ?, ?)",
+		u.ID, u.Email, u.PasswordHash, u.APIKeyHash, apiKey, u.CreatedAt,
 	)
 	if err != nil {
 		return nil, "", err
@@ -119,10 +119,16 @@ func (s *Store) GetUserByAPIKey(apiKeyHash string) (*User, error) {
 	return &u, nil
 }
 
+func (s *Store) GetUserAPIKey(userID string) (string, error) {
+	var key string
+	err := s.DB.QueryRow("SELECT COALESCE(api_key_raw, '') FROM users WHERE id = ?", userID).Scan(&key)
+	return key, err
+}
+
 
 func (s *Store) RotateAPIKey(userID string) (string, error) {
 	apiKey, apiKeyHash := generateAPIKey()
-	_, err := s.DB.Exec("UPDATE users SET api_key_hash = ? WHERE id = ?", apiKeyHash, userID)
+	_, err := s.DB.Exec("UPDATE users SET api_key_hash = ?, api_key_raw = ? WHERE id = ?", apiKeyHash, apiKey, userID)
 	return apiKey, err
 }
 

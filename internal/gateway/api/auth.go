@@ -91,9 +91,12 @@ func (h *AuthHandler) Login(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	apiKey, err := h.Store.RotateAPIKey(user.ID)
+	apiKey, err := h.Store.GetUserAPIKey(user.ID)
+	if err != nil || apiKey == "" {
+		apiKey, err = h.Store.RotateAPIKey(user.ID)
+	}
 	if err != nil {
-		slog.Error("rotate api key", "err", err)
+		slog.Error("get api key", "err", err)
 		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "internal error"})
 		return
 	}
