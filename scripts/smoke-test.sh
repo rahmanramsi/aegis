@@ -1,11 +1,11 @@
 #!/usr/bin/env bash
 # Smoke test: full user flow from register to agent creation.
-# Requires: aegisd and aegis-agent binaries in PATH or current dir.
+# Requires: bin/aegisd and bin/aegis-agent binaries in PATH or current dir.
 set -euo pipefail
 
 DIR="$(cd "$(dirname "$0")/.." && pwd)"
-GATEWAY="${DIR}/aegisd"
-AGENT_BIN="${DIR}/aegis-agent"
+GATEWAY="${DIR}/bin/aegisd"
+AGENT_BIN="${DIR}/bin/aegis-agent"
 DB_PATH="$(mktemp -d)/smoke.db"
 PORT=19876
 

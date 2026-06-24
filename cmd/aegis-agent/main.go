@@ -10,7 +10,7 @@ import (
 	"syscall"
 
 	"github.com/rahmanramsi/aegis/internal/daemon"
-	"github.com/rahmanramsi/aegis/internal/daemon/config"
+	"github.com/rahmanramsi/aegis/internal/config"
 	"github.com/rahmanramsi/aegis/internal/daemon/harness"
 )
 

@@ -7,7 +7,7 @@ import (
 
 	"github.com/coder/websocket"
 
-	"github.com/rahmanramsi/aegis/internal/shared/protocol"
+	"github.com/rahmanramsi/aegis/internal/protocol"
 )
 
 type DaemonConn struct {

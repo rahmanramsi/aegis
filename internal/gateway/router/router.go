@@ -10,7 +10,7 @@ import (
 	"github.com/rahmanramsi/aegis/internal/gateway/msg"
 	"github.com/rahmanramsi/aegis/internal/gateway/store"
 	"github.com/rahmanramsi/aegis/internal/gateway/ws"
-	"github.com/rahmanramsi/aegis/internal/shared/protocol"
+	"github.com/rahmanramsi/aegis/internal/protocol"
 )
 
 type pendingTask struct {

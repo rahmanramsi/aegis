@@ -10,9 +10,9 @@ import (
 	"github.com/coder/websocket"
 	"github.com/coder/websocket/wsjson"
 
-	"github.com/rahmanramsi/aegis/internal/daemon/config"
+	"github.com/rahmanramsi/aegis/internal/config"
 	"github.com/rahmanramsi/aegis/internal/daemon/harness"
-	"github.com/rahmanramsi/aegis/internal/shared/protocol"
+	"github.com/rahmanramsi/aegis/internal/protocol"
 )
 
 type Client struct {
@@ -53,7 +53,7 @@ func (c *Client) Connect(ctx context.Context) error {
 	hs := protocol.Message{
 		Type:      protocol.TypeHandshake,
 		DaemonID:  c.cfg.DaemonID,
-		Token:     c.cfg.Token,
+		Token:     c.cfg.DaemonToken,
 		Harnesses: harnessNames,
 	}
 
