@@ -44,13 +44,6 @@ func main() {
 		r.HandleWithAgent(ctx, m, adapter, agent)
 	})
 
-	// Restore bots from env
-	for _, tok := range cfg.TelegramTokens {
-		bm.AddBot(context.Background(), tok)
-	}
-	if cfg.TelegramToken != "" {
-		bm.AddBot(context.Background(), cfg.TelegramToken)
-	}
 
 	// Restore agents' Telegram bots from DB
 	tokens, _ := s.GetAllTelegramTokens()

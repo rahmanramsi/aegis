@@ -18,7 +18,7 @@ func TestCreateAndAuthDaemon(t *testing.T) {
 	}
 
 	// Authenticate with harnesses
-	err = s.AuthenticateDaemon(d.ID, "test-hash", []string{"echo", "claude"})
+	err = s.AuthenticateDaemon(d.ID, "test-hash", []string{"echo", "claude"}, "{}")
 	if err != nil {
 		t.Fatalf("auth: %v", err)
 	}
@@ -33,7 +33,7 @@ func TestCreateAndAuthDaemon(t *testing.T) {
 	}
 
 	// Wrong token
-	err = s.AuthenticateDaemon(d.ID, "wrong-hash", nil)
+	err = s.AuthenticateDaemon(d.ID, "wrong-hash", nil, "{}")
 	if err == nil {
 		t.Error("expected auth error")
 	}
@@ -68,7 +68,7 @@ func TestSetDaemonOffline(t *testing.T) {
 
 	u, _, _ := s.CreateUser("test@c.test", "pass")
 	d, _ := s.CreateDaemon(u.ID, "d", "h")
-	s.AuthenticateDaemon(d.ID, "h", nil)
+	s.AuthenticateDaemon(d.ID, "h", nil, "{}")
 
 	s.SetDaemonOffline(d.ID)
 	got, _ := s.GetDaemon(d.ID)
@@ -83,7 +83,7 @@ func TestDeleteDaemon(t *testing.T) {
 	u, _, _ := s.CreateUser("test@d.test", "pass")
 	d, _ := s.CreateDaemon(u.ID, "d", "h")
 
-	s.AuthenticateDaemon(d.ID, "h", []string{"echo"})
+	s.AuthenticateDaemon(d.ID, "h", []string{"echo"}, "{}")
 	s.DeleteDaemon(d.ID)
 
 	// Harnesses should be cascade-deleted

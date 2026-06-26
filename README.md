@@ -11,7 +11,7 @@ Aegis lets you build AI agent bots that live in Telegram, Discord, and beyond �
 # 1. Build and start the gateway
 go build -o aegisd ./cmd/aegisd
 cp .env.example .env
-# Edit .env with your Telegram token (optional)
+# Configure gateway env if needed; Telegram tokens are entered per agent in the UI.
 ./aegisd
 
 # 2. Open the web UI
@@ -65,13 +65,10 @@ open http://localhost:8080
 | Variable | Default | Description |
 |---|---|---|
 | `AEGIS_ADDR` | `:8080` | HTTP listen address |
-| `AEGIS_BASE_URL` | `http://localhost:8080` | Public base URL (for webhook registration and CORS) |
-| `AEGIS_DB_PATH` | `./data/gateway.db` | libSQL database file path |
+| `AEGIS_BASE_URL` | `http://localhost:8080` | Public base URL for CORS and callbacks |
+| `AEGIS_DATABASE_URL` | `./data/gateway.db` | libSQL database file path |
 | `AEGIS_API_KEY` | _(empty)_ | If set, protects POST/PUT/DELETE endpoints with Bearer token auth |
 | `AEGIS_ENV` | `development` | `development` or `production` (production restricts CORS origin) |
-| `AEGIS_TELEGRAM_TOKEN` | _(empty)_ | Telegram Bot API token from [@BotFather](https://t.me/BotFather) |
-| `AEGIS_DISCORD_TOKEN` | _(empty)_ | Discord Bot token |
-| `AEGIS_DISCORD_APP_ID` | _(empty)_ | Discord Application ID |
 
 ### Daemon (`aegis-agent`)
 
@@ -80,19 +77,23 @@ open http://localhost:8080
 | `AEGIS_GATEWAY_URL` | `ws://localhost:8080/ws/daemon` | Gateway WebSocket endpoint |
 | `AEGIS_DAEMON_ID` | _(empty)_ | Daemon UUID from gateway registration |
 | `AEGIS_DAEMON_TOKEN` | _(empty)_ | Daemon enrollment token (shown on creation) |
-| `AEGIS_DAEMON_NAME` | `dev-machine` | Human-readable daemon name |
+| `AEGIS_DAEMON_NAME` | `aegis-agent` | Human-readable daemon name |
+| `AEGIS_LOG_LEVEL` | `info` | `debug` enables daemon debug logs |
+| `AEGIS_WORKSPACES_ROOT` | `./workspaces` | Workspace directory root on the daemon machine |
+| `AEGIS_AGENT_TIMEOUT` | `30m` | Agent session timeout |
 | `ANTHROPIC_API_KEY` | _(empty)_ | API key for Claude harnesses |
 | `OPENAI_API_KEY` | _(empty)_ | API key for Codex/OpenAI harnesses |
 | `GOOGLE_API_KEY` | _(empty)_ | API key for Gemini harnesses |
-| `AEGIS_CLAUDE_MODEL` | `claude-sonnet-4-20250514` | Default Claude model |
+| `AEGIS_<HARNESS>_PATH` | auto-discovered | Optional CLI path override, e.g. `AEGIS_CLAUDE_PATH` |
+| `AEGIS_<HARNESS>_MODEL` | _(empty)_ | Optional default model, e.g. `AEGIS_CLAUDE_MODEL` |
 
 ## Setting Up Telegram
 
 1. Create a bot with [@BotFather](https://t.me/BotFather) — copy the token.
-2. Set `AEGIS_TELEGRAM_TOKEN` in your gateway `.env`.
-3. Start the gateway — it auto-registers webhooks.
-4. Create an agent in the web UI and connect it to a Telegram chat ID.
-5. Message the bot — your agent responds via the daemon.
+2. In the web UI: create an agent, paste the token in the Telegram field, and save the token externally if you need to reuse it.
+3. The gateway stores the token for that agent, starts the bot automatically, and restores enabled agent bots from the database on restart.
+
+> Existing deployments using `AEGIS_TELEGRAM_TOKEN` or `AEGIS_TELEGRAM_TOKENS` must move those tokens into agent records via the web UI; gateway env tokens are no longer loaded.
 
 ## Registering a Daemon
 

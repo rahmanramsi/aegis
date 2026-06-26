@@ -14,10 +14,6 @@ type Config struct {
 	BaseURL      string `env:"AEGIS_BASE_URL"`
 	LogLevel     string `env:"AEGIS_LOG_LEVEL" envDefault:"info"`
 
-	// Telegram
-	TelegramTokens []string `env:"AEGIS_TELEGRAM_TOKENS" envSeparator:","`
-	TelegramToken  string   `env:"AEGIS_TELEGRAM_TOKEN"`
-
 	// Daemon
 	DaemonID       string        `env:"AEGIS_DAEMON_ID"`
 	DaemonName     string        `env:"AEGIS_DAEMON_NAME" envDefault:"aegis-agent"`

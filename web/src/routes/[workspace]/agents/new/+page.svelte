@@ -162,7 +162,7 @@
 				<div class="space-y-2">
 					<Label for="tg-token">Telegram Bot Token (optional)</Label>
 					<Input id="tg-token" type="password" placeholder="Bot token from @BotFather" bind:value={telegramToken} />
-					<p class="text-xs text-zinc-500">Stored encrypted. Only shown once on creation.</p>
+					<p class="text-xs text-zinc-500">Stored so the gateway can restart this bot. The raw token is only returned in this creation response.</p>
 				</div>
 
 				<div class="flex gap-2 justify-end pt-2">
