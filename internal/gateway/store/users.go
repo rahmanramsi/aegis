@@ -18,11 +18,11 @@ type contextKey string
 const UserContextKey contextKey = "aegis_user"
 
 type User struct {
-	ID                string `json:"id"`
-	Email             string `json:"email"`
-	PasswordHash      string `json:"-"`
-	APIKeyHash        string `json:"-"`
-	CreatedAt         string `json:"created_at"`
+	ID           string `json:"id"`
+	Email        string `json:"email"`
+	PasswordHash string `json:"-"`
+	APIKeyHash   string `json:"-"`
+	CreatedAt    string `json:"created_at"`
 }
 
 type WorkspaceMember struct {
@@ -125,13 +125,11 @@ func (s *Store) GetUserAPIKey(userID string) (string, error) {
 	return key, err
 }
 
-
 func (s *Store) RotateAPIKey(userID string) (string, error) {
 	apiKey, apiKeyHash := generateAPIKey()
 	_, err := s.DB.Exec("UPDATE users SET api_key_hash = ?, api_key_raw = ? WHERE id = ?", apiKeyHash, apiKey, userID)
 	return apiKey, err
 }
-
 
 func (s *Store) AddMember(workspaceID, userID, role string) error {
 	_, err := s.DB.Exec(

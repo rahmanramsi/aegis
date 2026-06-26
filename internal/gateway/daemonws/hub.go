@@ -1,4 +1,4 @@
-package ws
+package daemonws
 
 import (
 	"context"
@@ -6,13 +6,13 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
+	"github.com/coder/websocket"
+	"github.com/coder/websocket/wsjson"
+	"github.com/google/uuid"
 	"log/slog"
 	"net/http"
 	"sync"
 	"time"
-	"github.com/coder/websocket"
-	"github.com/coder/websocket/wsjson"
-	"github.com/google/uuid"
 
 	"github.com/rahmanramsi/aegis/internal/gateway/store"
 	"github.com/rahmanramsi/aegis/internal/protocol"
@@ -21,10 +21,10 @@ import (
 type TaskCallback func(taskID string, event protocol.Message)
 
 type Hub struct {
-	Store        *store.Store
-	mu           sync.RWMutex
-	daemons      map[string]*DaemonConn
-	OnTaskEvent  TaskCallback // called when daemon sends stdout/done/error for a task
+	Store       *store.Store
+	mu          sync.RWMutex
+	daemons     map[string]*DaemonConn
+	OnTaskEvent TaskCallback // called when daemon sends stdout/done/error for a task
 }
 
 func NewHub(s *store.Store) *Hub {
