@@ -16,7 +16,7 @@ import (
 )
 
 type Client struct {
-	cfg     *config.Config
+	cfg     *config.Daemon
 	runners map[string]*harness.RegisteredHarness
 	wm      *harness.WorkspaceManager
 	conn    *websocket.Conn
@@ -24,7 +24,7 @@ type Client struct {
 	tasks   map[string]context.CancelFunc
 }
 
-func NewClient(cfg *config.Config, reg []harness.RegisteredHarness) *Client {
+func NewClient(cfg *config.Daemon, reg []harness.RegisteredHarness) *Client {
 	runners := make(map[string]*harness.RegisteredHarness)
 	for i := range reg {
 		runners[reg[i].Runner.Name()] = &reg[i]
@@ -55,11 +55,11 @@ func (c *Client) Connect(ctx context.Context) error {
 	}
 
 	hs := protocol.Message{
-		Type:         protocol.TypeHandshake,
-		DaemonID:     c.cfg.DaemonID,
-		Token:        c.cfg.DaemonToken,
-		DaemonName:   c.cfg.DaemonName,
-		Harnesses:    harnessNames,
+		Type:          protocol.TypeHandshake,
+		DaemonID:      c.cfg.DaemonID,
+		Token:         c.cfg.DaemonToken,
+		DaemonName:    c.cfg.DaemonName,
+		Harnesses:     harnessNames,
 		HarnessModels: harnessModels,
 	}
 
@@ -70,7 +70,6 @@ func (c *Client) Connect(ctx context.Context) error {
 	slog.Info("handshake sent", "harnesses", harnessNames)
 	return nil
 }
-
 
 // Run connects to the gateway and runs the read loop with auto-reconnect
 // and exponential backoff. It blocks until ctx is cancelled.

@@ -3,15 +3,12 @@ package gateway
 import (
 	"context"
 	"net/http"
-	"os"
 	"strings"
 
 	"github.com/rahmanramsi/aegis/internal/gateway/store"
 )
 
-func authMiddleware(s *store.Store) func(http.Handler) http.Handler {
-	adminKey := os.Getenv("AEGIS_API_KEY")
-
+func authMiddleware(s *store.Store, adminKey string) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			token := r.Header.Get("Authorization")

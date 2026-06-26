@@ -8,24 +8,24 @@ import (
 )
 
 type Daemon struct {
-	ID               string  `json:"id"`
-	UserID           string  `json:"user_id"`
-	Name             string  `json:"name"`
-	TokenHash        string  `json:"-"`
-	Status           string  `json:"status"`
-	LastSeen         *string `json:"last_seen"`
+	ID                string  `json:"id"`
+	UserID            string  `json:"user_id"`
+	Name              string  `json:"name"`
+	TokenHash         string  `json:"-"`
+	Status            string  `json:"status"`
+	LastSeen          *string `json:"last_seen"`
 	HarnessModelsJSON string  `json:"-"`
-	CreatedAt        string  `json:"created_at"`
+	CreatedAt         string  `json:"created_at"`
 }
 
 func (s *Store) CreateDaemon(userID, name, tokenHash string) (*Daemon, error) {
 	d := &Daemon{
-		ID:          uuid.NewString(),
-		UserID:      userID,
-		Name:        name,
-		TokenHash:   tokenHash,
-		Status:      "offline",
-		CreatedAt:   time.Now().UTC().Format(time.RFC3339),
+		ID:        uuid.NewString(),
+		UserID:    userID,
+		Name:      name,
+		TokenHash: tokenHash,
+		Status:    "offline",
+		CreatedAt: time.Now().UTC().Format(time.RFC3339),
 	}
 	_, err := s.DB.Exec(
 		"INSERT INTO daemons (id, user_id, name, token_hash, status, created_at) VALUES (?, ?, ?, ?, ?, ?)",

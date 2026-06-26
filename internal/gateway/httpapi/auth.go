@@ -1,4 +1,4 @@
-package api
+package httpapi
 
 import (
 	"encoding/json"
@@ -116,4 +116,3 @@ func (h *AuthHandler) Me(w http.ResponseWriter, r *http.Request) {
 	}
 	json.NewEncoder(w).Encode(user)
 }
-

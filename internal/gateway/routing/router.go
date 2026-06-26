@@ -1,4 +1,4 @@
-package router
+package routing
 
 import (
 	"context"
@@ -7,28 +7,28 @@ import (
 	"sync"
 
 	"github.com/google/uuid"
-	"github.com/rahmanramsi/aegis/internal/gateway/msg"
+	"github.com/rahmanramsi/aegis/internal/gateway/daemonws"
+	"github.com/rahmanramsi/aegis/internal/gateway/messaging"
 	"github.com/rahmanramsi/aegis/internal/gateway/store"
-	"github.com/rahmanramsi/aegis/internal/gateway/ws"
 	"github.com/rahmanramsi/aegis/internal/protocol"
 )
 
 type pendingTask struct {
-	adapter   msg.Adapter
+	adapter   messaging.Adapter
 	chatID    string
 	sessionID string
 	agentID   string
-	stream    msg.StreamSender
+	stream    messaging.StreamSender
 }
 
 type Router struct {
 	Store   *store.Store
-	Hub     *ws.Hub
+	Hub     *daemonws.Hub
 	mu      sync.Mutex
 	pending map[string]*pendingTask // taskID → callback info
 }
 
-func NewRouter(s *store.Store, hub *ws.Hub) *Router {
+func NewRouter(s *store.Store, hub *daemonws.Hub) *Router {
 	r := &Router{
 		Store:   s,
 		Hub:     hub,
@@ -63,11 +63,11 @@ func (r *Router) onTaskEvent(taskID string, event protocol.Message) {
 	}
 }
 
-func (r *Router) Handle(ctx context.Context, m msg.Message, adapter msg.Adapter) {
+func (r *Router) Handle(ctx context.Context, m messaging.Message, adapter messaging.Adapter) {
 	adapter.Send(m.ChatID, "Direct routing not configured. Use an agent via web dashboard.")
 }
 
-func (r *Router) HandleWithAgent(ctx context.Context, m msg.Message, adapter msg.Adapter, agent *store.Agent) {
+func (r *Router) HandleWithAgent(ctx context.Context, m messaging.Message, adapter messaging.Adapter, agent *store.Agent) {
 	// Show typing indicator while processing
 	if ta, ok := adapter.(interface{ SendTyping(string) error }); ok {
 		ta.SendTyping(m.ChatID)

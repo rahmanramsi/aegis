@@ -17,7 +17,7 @@ import (
 )
 
 func main() {
-	cfg, err := config.Load()
+	cfg, err := config.LoadDaemon()
 	if err != nil {
 		slog.Error("load config", "err", err)
 		os.Exit(1)

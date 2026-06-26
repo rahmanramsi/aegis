@@ -1,4 +1,4 @@
-package api
+package httpapi
 
 import (
 	"crypto/rand"
@@ -28,8 +28,8 @@ type createDaemonResponse struct {
 
 type daemonWithHarnesses struct {
 	store.Daemon
-	Harnesses      []string            `json:"harnesses"`
-	HarnessModels  map[string][]string `json:"harness_models"`
+	Harnesses     []string            `json:"harnesses"`
+	HarnessModels map[string][]string `json:"harness_models"`
 }
 
 func (h *DaemonHandler) List(w http.ResponseWriter, r *http.Request) {
