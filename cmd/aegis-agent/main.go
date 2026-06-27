@@ -30,6 +30,7 @@ func main() {
 	slog.SetDefault(slog.New(slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{Level: level})))
 
 	runners := []harness.Runner{
+		harness.NewEchoRunner(),
 		harness.NewPiRunner(getPath("pi"), getModel("PI")),
 		harness.NewClaudeRunner(getPath("claude"), getModel("CLAUDE")),
 		harness.NewCodexRunner(getPath("codex"), getModel("CODEX")),
