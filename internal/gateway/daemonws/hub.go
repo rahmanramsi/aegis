@@ -66,27 +66,25 @@ func (h *Hub) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 
 	tokenHash := sha256Hex(msg.Token)
-	user, err := h.Store.GetUserByAPIKey(tokenHash)
-	if err != nil {
-		slog.Warn("ws: invalid API key", "err", err)
-		wsjson.Write(ctx, conn, protocol.Message{Type: protocol.TypeError, Content: "invalid API key"})
-		conn.Close(websocket.StatusPolicyViolation, "invalid API key")
-		return
-	}
-
 	daemonID := msg.DaemonID
 	if daemonID == "" {
 		daemonID = uuid.NewString()
 	}
+	if _, err := h.Store.GetDaemon(daemonID); err != nil {
+		user, err := h.Store.GetUserByAPIKey(tokenHash)
+		if err != nil {
+			slog.Warn("ws: invalid daemon token", "daemon_id", daemonID, "err", err)
+			wsjson.Write(ctx, conn, protocol.Message{Type: protocol.TypeError, Content: "invalid daemon token"})
+			conn.Close(websocket.StatusPolicyViolation, "invalid daemon token")
+			return
+		}
 
-	d, err := h.Store.GetDaemon(daemonID)
-	if err != nil {
 		name := msg.DaemonName
 		if name == "" {
 			name = "auto"
 		}
 		// Try to find existing daemon by user+name (daemon regenerates UUID each start)
-		d, err = h.Store.GetDaemonByUserAndName(user.ID, name)
+		d, err := h.Store.GetDaemonByUserAndName(user.ID, name)
 		if err != nil {
 			d, err = h.Store.CreateDaemon(user.ID, name, tokenHash)
 			if err != nil {

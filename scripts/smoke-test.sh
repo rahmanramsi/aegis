@@ -36,6 +36,20 @@ check() {
     fi
 }
 
+wait_daemon_status() {
+    local want="$1"
+    local status=""
+    for _ in {1..20}; do
+        status=$(curl -sf -H "Authorization: Bearer $NEWKEY" "$BASE/api/v1/daemons" | python3 -c "import sys,json; print(json.load(sys.stdin)[0]['status'])") || true
+        if [ "$status" = "$want" ]; then
+            echo "$status"
+            return 0
+        fi
+        sleep 0.5
+    done
+    echo "$status"
+}
+
 BASE="http://localhost:$PORT"
 
 # 1. Health
@@ -73,14 +87,14 @@ WS=$(curl -sf -X POST "$BASE/api/v1/workspaces" \
 WSID=$(echo "$WS" | python3 -c "import sys,json; print(json.load(sys.stdin)['id'])")
 check "create-ws" "0" "$(if [ -n "$WSID" ]; then echo 0; else echo 1; fi)"
 
-# 6. List workspaces (user sees 1)
+# 6. List workspaces (registration creates a default workspace; this test adds one more)
 echo "--- List workspaces ---"
 COUNT=$(curl -sf -H "Authorization: Bearer $NEWKEY" "$BASE/api/v1/workspaces" | python3 -c "import sys,json; print(len(json.load(sys.stdin)))")
-check "list-ws" "1" "$COUNT"
+check "list-ws" "2" "$COUNT"
 
 # 7. Create daemon
 echo "--- Create daemon ---"
-DM=$(curl -sf -X POST "$BASE/api/v1/workspaces/$WSID/daemons" \
+DM=$(curl -sf -X POST "$BASE/api/v1/daemons" \
     -H 'Content-Type: application/json' \
     -H "Authorization: Bearer $NEWKEY" \
     -d '{"name":"smoke-daemon"}')
@@ -90,10 +104,9 @@ check "create-daemon" "0" "$(if [ -n "$DMID" ]; then echo 0; else echo 1; fi)"
 
 # 8. Start daemon
 echo "--- Start daemon ---"
-AEGIS_DAEMON_ID="$DMID" AEGIS_DAEMON_TOKEN="$DTOKEN" AEGIS_GATEWAY_URL="ws://localhost:$PORT/ws/daemon" "$AGENT_BIN" &
-sleep 2
+PATH="/usr/bin:/bin" AEGIS_DAEMON_ID="$DMID" AEGIS_DAEMON_TOKEN="$DTOKEN" AEGIS_GATEWAY_URL="ws://localhost:$PORT/ws/daemon" "$AGENT_BIN" &
 
-STATUS=$(curl -sf -H "Authorization: Bearer $NEWKEY" "$BASE/api/v1/workspaces/$WSID/daemons" | python3 -c "import sys,json; print(json.load(sys.stdin)[0]['status'])")
+STATUS=$(wait_daemon_status "online")
 check "daemon-online" "online" "$STATUS"
 
 # 9. Create agent

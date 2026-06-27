@@ -43,8 +43,6 @@ func (c *Client) Connect(ctx context.Context) error {
 	if err != nil {
 		return fmt.Errorf("dial gateway: %w", err)
 	}
-	c.conn = conn
-
 	harnessNames := make([]string, 0, len(c.runners))
 	harnessModels := make(map[string][]string, len(c.runners))
 	for name, rh := range c.runners {
@@ -64,8 +62,12 @@ func (c *Client) Connect(ctx context.Context) error {
 	}
 
 	if err := wsjson.Write(ctx, conn, hs); err != nil {
+		conn.Close(websocket.StatusInternalError, "handshake failed")
 		return fmt.Errorf("send handshake: %w", err)
 	}
+	c.mu.Lock()
+	c.conn = conn
+	c.mu.Unlock()
 
 	slog.Info("handshake sent", "harnesses", harnessNames)
 	return nil

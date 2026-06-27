@@ -12,6 +12,9 @@ func NewEchoRunner() *EchoRunner { return &EchoRunner{} }
 
 func (e *EchoRunner) Name() string    { return "echo" }
 func (e *EchoRunner) Available() bool { return true }
+func (e *EchoRunner) Models(ctx context.Context) ([]string, error) {
+	return []string{"echo"}, nil
+}
 
 func (e *EchoRunner) Run(ctx context.Context, req RunRequest) (<-chan StreamEvent, error) {
 	ch := make(chan StreamEvent, 8)
